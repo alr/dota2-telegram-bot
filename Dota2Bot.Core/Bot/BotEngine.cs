@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Bot.Commands;
+using log4net;
 using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Args;
@@ -13,7 +14,7 @@ namespace Dota2Bot.Core.Bot
 {
     public class BotEngine
     {
-        //private readonly ILog logger = LogManager.GetLogger(typeof(BotEngine));
+        private readonly ILog logger = LogManager.GetLogger(typeof(BotEngine));
 
         private readonly IConfiguration config;
         private readonly TelegramBotClient telegram;
@@ -83,7 +84,7 @@ namespace Dota2Bot.Core.Bot
             }
             catch (Exception ex)
             {
-                //logger.Error("Cmd: " + update.Text, ex);
+                logger.Error("Cmd: " + update.Text, ex);
                 await telegram.SendTextMessageAsync(chatId, "An error has occurred, please try again");
             }
         }
