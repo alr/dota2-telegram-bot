@@ -14,9 +14,7 @@
 
   <ItemGroup>
     <Folder Include="Bot\Commands\" />
-    <Folder Include="Domain\" />
     <Folder Include="Engine\Models\" />
-    <Folder Include="OpenDota\Models\" />
     <Folder Include="Steam\Models\" />
   </ItemGroup>
 
