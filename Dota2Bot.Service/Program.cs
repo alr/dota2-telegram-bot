@@ -11,6 +11,8 @@ using Dota2Bot.Core.SteamApi;
 using log4net;
 using log4net.Config;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Dota2Bot.Service
 {
@@ -18,7 +20,7 @@ namespace Dota2Bot.Service
     {
         private static readonly ILog Logger = LogManager.GetLogger(typeof(Program));
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             // global unhandled exceptions
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
@@ -27,19 +29,15 @@ namespace Dota2Bot.Service
             var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
             XmlConfigurator.Configure(logRepository, new FileInfo("log4net.config"));
 
-            // setup service
-            IConfiguration config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            BotEngine bot = new BotEngine(config);
-            bot.Start();
-
-            Grabber grabber = new Grabber(config);
-            grabber.Start();
-
-            Console.ReadLine();
+            await new HostBuilder()
+                .ConfigureAppConfiguration(builder => builder
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true))
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddHostedService<Dota2BotService>();
+                })
+                .RunConsoleAsync();
         }
 
         static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
