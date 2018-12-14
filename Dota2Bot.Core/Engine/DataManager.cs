@@ -28,15 +28,6 @@ namespace Dota2Bot.Core.Engine
             dbContext = new Dota2DbContext(optionsBuilder.Options);
         }
 
-        public List<Player> GetPlayers(long chatId, params Expression<Func<Player, object>>[] includes)
-        {
-            return dbContext.ChatPlayers
-                .Where(x => x.ChatId == chatId)
-                .Select(x => x.Player)
-                .IncludeMultiple(includes)
-                .ToList();
-        }
-
         public Player PlayerGet(long playerId)
         {
             return dbContext.Players.FirstOrDefault(x => x.Id == playerId);
@@ -60,6 +51,14 @@ namespace Dota2Bot.Core.Engine
             }
         }
 
+        public List<Player> ChatGetPlayers(long chatId, params Expression<Func<Player, object>>[] includes)
+        {
+            return dbContext.ChatPlayers
+                .Where(x => x.ChatId == chatId)
+                .Select(x => x.Player)
+                .IncludeMultiple(includes)
+                .ToList();
+        }
         
         public bool ChatAddPlayer(TgChat chat, Player player)
         {

@@ -20,7 +20,7 @@ namespace Dota2Bot.Core.Bot.Commands
         {
             using (DataManager dataManager = new DataManager(Config))
             {
-                var players = dataManager.GetPlayers(chatId)
+                var players = dataManager.ChatGetPlayers(chatId)
                     .OrderByDescending(x => x.WinRate()).ToList();
 
                 List<string> summary = new List<string>();

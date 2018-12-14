@@ -16,7 +16,7 @@ namespace Dota2Bot.Core.Bot.Commands
         {
             using (DataManager dataManager = new DataManager(Config))
             {
-                var players = dataManager.GetPlayers(chatId);
+                var players = dataManager.ChatGetPlayers(chatId);
                 if (players.Count > 0)
                 {
                     var msg = String.Join("\r\n", players.OrderBy(x => x.Id).Select(x => x.Id + " - " + x.Name));

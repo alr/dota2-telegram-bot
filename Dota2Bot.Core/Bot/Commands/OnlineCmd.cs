@@ -21,7 +21,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
             using (DataManager dataManager = new DataManager(Config))
             {
-                var players = dataManager.GetPlayers(chatId);
+                var players = dataManager.ChatGetPlayers(chatId);
                 var steamIds = players.Select(x => x.SteamId).ToList();
                 
                 var summaries = steamClient.GetPlayerSummaries(steamIds);
