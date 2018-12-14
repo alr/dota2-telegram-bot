@@ -85,6 +85,16 @@ namespace Dota2Bot.Core.Engine
             return false;
         }
 
+        public List<Match> ChatGetMatches(long chatId, int limit, params Expression<Func<Match, object>>[] includes)
+        {
+            return dbContext.ChatPlayers
+                .Where(x => x.ChatId == chatId)
+                .Select(x => x.Player)
+                .SelectMany(x => x.Matches.OrderByDescending(k => k.MatchId).Take(limit))
+                .IncludeMultiple(includes)
+                .ToList();
+        }
+
         #region MatchNotifier
 
         public List<Match> GetMathes(List<long> matchIds, params Expression<Func<Match, object>>[] includes)
