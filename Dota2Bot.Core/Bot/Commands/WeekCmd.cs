@@ -30,9 +30,9 @@ namespace Dota2Bot.Core.Bot.Commands
                     return;
                 }
 
-                string msg = "*#* |" +
-                             "*Nick* |" +
-                             "*WinRate* |" +
+                string msg = "*#* | " +
+                             "*Nick* | " +
+                             "*WinRate* | " +
                              //"*KD* |" +
                              "*Time*\r\n";
 
@@ -43,10 +43,10 @@ namespace Dota2Bot.Core.Bot.Commands
                     TimeSpan t = TimeSpan.FromSeconds(player.TotalTime);
                     string time = String.Format("{0:N1}", t.TotalHours);
 
-                    var str = $"{i + 1} |" +
-                              $"{player.Name.Markdown()} |" +
-                              $"{(player.WinRate == -1 ? "N/A" : player.WinRate.ToString("N2"))} |" +
-                              //$"{player.TotalKill} / {player.TotalDeath} |" +
+                    var str = $"{i + 1} | " +
+                              $"{player.Name.Markdown()} | " +
+                              $"{(player.WinRate == -1 ? "N/A" : player.WinRate.ToString("N2"))} | " +
+                              //$"{player.TotalKill} / {player.TotalDeath} | " +
                               $"{time} ({player.Matches})\r\n";
 
                     msg += str;
