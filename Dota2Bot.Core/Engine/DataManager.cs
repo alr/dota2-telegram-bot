@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using Dota2Bot.Core.Engine.Models.Report;
 using Dota2Bot.Core.Extensions;
 using Dota2Bot.Domain;
 using Dota2Bot.Domain.Entity;
@@ -119,6 +120,65 @@ namespace Dota2Bot.Core.Engine
                         && x.DateStart >= dateStartFrom
                         && x.DateStart <= dateStartTo)
                 .ToList();
+        }
+
+        #endregion
+
+        #region Reports
+
+        public WeeklyReport WeeklyReport(long chatId, DateTime dateStart)
+        {
+            var mathesQeury = dbContext.ChatPlayers
+                .Where(x => x.ChatId == chatId)
+                .Select(x => x.Player)
+                .SelectMany(x => x.Matches.Where(k => k.DateStart >= dateStart));
+
+            var stats = mathesQeury
+                .GroupBy(x => x.PlayerId)
+                .Select(g => new WeeklyPlayerModel
+                {
+                    PlayerId = g.Key,
+                    Name = g.Max(x => x.Player.Name),
+                    KillsAvg = (int) Math.Round(g.Average(x => x.Kills)),
+                    KillsMax = g.Max(x => x.Kills),
+                    Matches = g.Count(),
+                    WinRate = g.Count() >= 3 ? g.Count(x => x.Won) * 100.0 / g.Count() : -1,
+                    TotalTime = g.Sum(x => x.Duration.TotalSeconds),
+                    TotalKill = g.Sum(x => x.Kills),
+                    TotalDeath = g.Sum(x => x.Deaths),
+                    TotalAssist = g.Sum(x => x.Assists)
+                })
+                .OrderByDescending(x => x.WinRate)
+                .ThenByDescending(x => x.Matches)
+                .ThenByDescending(x => x.KillsAvg)
+                .ThenByDescending(x => x.KillsMax)
+                .ToList();
+
+            if (stats.Count == 0)
+            {
+                return null;
+            }
+
+            var total = mathesQeury
+                .GroupBy(x => x.MatchId)
+                .Select(g => new
+                {
+                    MatchId = g.Key,
+                    Won = g.Any(x => x.Won)
+                }).ToList();
+
+            WeeklyReport viewModel = new WeeklyReport
+            {
+                Players = stats,
+                Overall = new WeeklyOverall
+                {
+                    Total = total.Count,
+                    Wins = total.Count(x => x.Won),
+                    WinRate = total.Count >= 3 ? total.Count(x => x.Won)*100.0/total.Count : -1
+                }
+            };
+
+            return viewModel;
         }
 
         #endregion

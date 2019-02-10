@@ -30,7 +30,7 @@ namespace Dota2Bot.Service
 
             grabber = new Grabber(config);
             grabber.Start();
-
+            
             return Task.CompletedTask;
         }
 
