@@ -18,7 +18,8 @@ namespace Dota2Bot.Core.Domain
             "Team match",
             "Solo Queue",
             "Ranked",
-            "Solo Mid 1vs1"
+            "Solo Mid 1vs1",
+            "Battle Cup"
         };
 
         public static string Get(int lobbyType)
