@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Dota2Bot.Service": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

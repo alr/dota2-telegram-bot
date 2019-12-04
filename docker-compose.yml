@@ -1,0 +1,22 @@
+version: '3.4'
+
+services:
+  db:
+    image: postgres:11
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Qwerty_6
+      ALLOW_IP_RANGE: 0.0.0.0/0
+    ports:
+      - 5432:5432
+    volumes:
+      - .\docker\postgres\:/var/lib/postgresql/data
+
+  dota2bot.service:
+    image: ${DOCKER_REGISTRY-}dota2botservice
+    build:
+      context: .
+      dockerfile: Dota2Bot.Service/Dockerfile
+    depends_on:
+      - db
