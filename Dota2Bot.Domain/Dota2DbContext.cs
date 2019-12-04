@@ -10,13 +10,17 @@ namespace Dota2Bot.Domain
 {
     public class Dota2DbContext : DbContext
     {
-        public static readonly LoggerFactory DebugLoggerFactory =
-            new LoggerFactory(new[] { new DebugLoggerProvider((s, level) => level >= LogLevel.Information) });
+        public static readonly ILoggerFactory DebugLoggerFactory =
+            LoggerFactory.Create(builder =>
+            {
+                builder
+                    .AddFilter(level => level >= LogLevel.Information)
+                    .AddDebug();
+            });
 
         public Dota2DbContext(DbContextOptions<Dota2DbContext> options)
             : base(options)
         {
-
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
