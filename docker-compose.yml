@@ -11,7 +11,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - .\docker\postgres\:/var/lib/postgresql/data
+      - ./../docker/postgres:/var/lib/postgresql/data
 
   dota2bot.service:
     image: ${DOCKER_REGISTRY-}dota2botservice

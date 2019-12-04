@@ -15,8 +15,12 @@ RUN dotnet build "Dota2Bot.Service.csproj" -c Release -o /app/build
 
 FROM build AS publish
 RUN dotnet publish "Dota2Bot.Service.csproj" -c Release -o /app/publish
+WORKDIR /app/tools
+RUN git clone https://github.com/vishnubob/wait-for-it.git
 
 FROM base AS final
+WORKDIR /tools
+COPY --from=publish /app/tools .
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Dota2Bot.Service.dll"]
+ENTRYPOINT ["/tools/wait-for-it/wait-for-it.sh", "db:5432", "--", "dotnet", "Dota2Bot.Service.dll"]
