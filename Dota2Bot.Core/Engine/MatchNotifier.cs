@@ -11,6 +11,8 @@ using Humanizer;
 using Humanizer.Localisation;
 using log4net;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
@@ -18,51 +20,50 @@ namespace Dota2Bot.Core.Engine
 {
     public class MatchNotifier
     {
-        private readonly ILog logger = LogManager.GetLogger(typeof(MatchNotifier));
+        private readonly ILogger<MatchNotifier> logger;
+        private readonly IServiceProvider serviceProvider;
+        private readonly ITelegramBotClient telegram;
 
-        private readonly IConfiguration config;
-        private readonly TelegramBotClient telegram;
-
-        public MatchNotifier(IConfiguration config)
+        public MatchNotifier(ILogger<MatchNotifier> logger, IServiceProvider serviceProvider,
+            ITelegramBotClient telegram)
         {
-            this.config = config;
-
-            var telegramKey = config["telegram.ApiKey"];
-            telegram = new TelegramBotClient(telegramKey);
+            this.logger = logger;
+            this.serviceProvider = serviceProvider;
+            this.telegram = telegram;
         }
 
         #region Match
         
         public async Task NotifyChats(List<long> matchIds)
         {
-            using (DataManager dataManager = new DataManager(config))
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+            
+            var matches = dataManager
+                .GetMathes(matchIds,
+                    x => x.Player,
+                    x => x.Player.ChatPlayers,
+                    x => x.Hero)
+                .OrderBy(x => x.DateStart + x.Duration)
+                .ThenBy(x => x.PlayerSlot);
+
+            //split matches to chats
+            Dictionary<long, List<Match>> chats = new Dictionary<long, List<Match>>();
+            foreach (var match in matches)
             {
-                var matches = dataManager
-                    .GetMathes(matchIds,
-                        x => x.Player,
-                        x => x.Player.ChatPlayers,
-                        x => x.Hero)
-                    .OrderBy(x => x.DateStart + x.Duration)
-                    .ThenBy(x => x.PlayerSlot);
-
-                //split matches to chats
-                Dictionary<long, List<Match>> chats = new Dictionary<long, List<Match>>();
-                foreach (var match in matches)
+                foreach (var chatPlayer in match.Player.ChatPlayers)
                 {
-                    foreach (var chatPlayer in match.Player.ChatPlayers)
-                    {
-                        if (chats.ContainsKey(chatPlayer.ChatId))
-                            chats[chatPlayer.ChatId].Add(match);
-                        else
-                            chats[chatPlayer.ChatId] = new List<Match> { match };
-                    }
+                    if (chats.ContainsKey(chatPlayer.ChatId))
+                        chats[chatPlayer.ChatId].Add(match);
+                    else
+                        chats[chatPlayer.ChatId] = new List<Match> { match };
                 }
+            }
 
-                //send messages to chats
-                foreach (var chat in chats)
-                {
-                    await ProcessChat(chat.Key, chat.Value);
-                }
+            //send messages to chats
+            foreach (var chat in chats)
+            {
+                await ProcessChat(chat.Key, chat.Value);
             }
         }
 
@@ -85,7 +86,7 @@ namespace Dota2Bot.Core.Engine
                 }
                 catch (Exception ex)
                 {
-                    logger.Error("MatchId: " + game.MatchId, ex);
+                    logger.LogError(ex,$"MatchId: {game.MatchId}");
                 }
             }
         }
@@ -153,89 +154,89 @@ namespace Dota2Bot.Core.Engine
         {
             if (newOnline.Count == 0 && newOffline.Count == 0)
                 return;
-            
-            using (DataManager dataManager = new DataManager(config))
-            {
-                var chats = dataManager
-                    .GetChatPlayers(x => x.Chat, x => x.Player)
-                    .GroupBy(x => x.Chat)
-                    .Select(g => new
-                    {
-                        Chat = g.Key,
-                        Players = g.Select(x => x.Player).ToList()
-                    })
-                    .ToList();
 
-                foreach (var session in newOffline)
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+                
+            var chats = dataManager
+                .GetChatPlayers(x => x.Chat, x => x.Player)
+                .GroupBy(x => x.Chat)
+                .Select(g => new
                 {
-                    if (session.Start != null && session.End != null)
+                    Chat = g.Key,
+                    Players = g.Select(x => x.Player).ToList()
+                })
+                .ToList();
+
+            foreach (var session in newOffline)
+            {
+                if (session.Start != null && session.End != null)
+                {
+                    var steamId = long.Parse(session.SteamId);
+                    var playerId = SteamId.ConvertTo32(steamId);
+
+                    var games = dataManager
+                        .GetPlayerMatches(playerId, session.Start.Value, session.End.Value)
+                        .Select(x => new { x.Won })
+                        .ToList();
+
+                    if (games.Count > 0)
                     {
-                        var steamId = long.Parse(session.SteamId);
-                        var playerId = SteamId.ConvertTo32(steamId);
+                        var wons = games.Count(x => x.Won);
+                        var losts = games.Count(x => !x.Won);
 
-                        var games = dataManager
-                            .GetPlayerMatches(playerId, session.Start.Value, session.End.Value)
-                            .Select(x => new { x.Won })
-                            .ToList();
-
-                        if (games.Count > 0)
-                        {
-                            var wons = games.Count(x => x.Won);
-                            var losts = games.Count(x => !x.Won);
-
-                            session.Stat = wons - losts;
-                        }
+                        session.Stat = wons - losts;
                     }
                 }
+            }
                 
-                foreach (var chat in chats)
+            foreach (var chat in chats)
+            {
+                var online = chat.Players.Where(x => newOnline.Contains(x.SteamId)).ToList();
+                if (online.Count > 0)
                 {
-                    var online = chat.Players.Where(x => newOnline.Contains(x.SteamId)).ToList();
-                    if (online.Count > 0)
-                    {
-                        var lines = online.Select(x => $"*{x.Name.Markdown()}* connected");
-                        var msg = string.Join("\n", lines);
+                    var lines = online.Select(x => $"*{x.Name.Markdown()}* connected");
+                    var msg = string.Join("\n", lines);
 
-                        await telegram.SendTextMessageAsync(chat.Chat.Id, msg, parseMode: ParseMode.Markdown);
-                    }
+                    await telegram.SendTextMessageAsync(chat.Chat.Id, msg, parseMode: ParseMode.Markdown);
+                }
                     
-                    List<PlayerGameSession> offline = new List<PlayerGameSession>();
-                    foreach (var player in chat.Players)
+                List<PlayerGameSession> offline = new List<PlayerGameSession>();
+                foreach (var player in chat.Players)
+                {
+                    var session = newOffline.FirstOrDefault(x => x.SteamId == player.SteamId);
+                    if (session != null)
                     {
-                        var session = newOffline.FirstOrDefault(x => x.SteamId == player.SteamId);
-                        if (session != null)
+                        session.PlayerName = player.Name;        
+                        offline.Add(session);
+                    }
+                }
+
+                if (offline.Count > 0)
+                {
+                    var lines = offline.Select(x =>
+                    {
+                        var str = $"*{x.PlayerName.Markdown()}* disconnected";
+
+                        if (x.Stat != null)
+                            str += $" || {x.Stat.Value:+#;-#;0}";
+
+                        var duration = x.End - x.Start;
+                        if (duration != null)
                         {
-                            session.PlayerName = player.Name;        
-                            offline.Add(session);
+                            var time = duration.Value.Humanize(precision: 2, 
+                                minUnit: TimeUnit.Minute,
+                                maxUnit: TimeUnit.Hour);
+
+                            str += $" || {time}";
                         }
-                    }
 
-                    if (offline.Count > 0)
-                    {
-                        var lines = offline.Select(x =>
-                        {
-                            var str = $"*{x.PlayerName.Markdown()}* disconnected";
-
-                            if (x.Stat != null)
-                                str += $" || {x.Stat.Value:+#;-#;0}";
-
-                            var duration = x.End - x.Start;
-                            if (duration != null)
-                            {
-                                var time = duration.Value.Humanize(precision: 2, 
-                                    minUnit: TimeUnit.Minute,
-                                    maxUnit: TimeUnit.Hour);
-
-                                str += $" || {time}";
-                            }
-
-                            return str;
-                        });
+                        return str;
+                    });
                         
-                        var msg = string.Join("\n", lines);
+                    var msg = string.Join("\n", lines);
 
-                        await telegram.SendTextMessageAsync(chat.Chat.Id, msg, parseMode: ParseMode.Markdown);
-                    }
+                    await telegram.SendTextMessageAsync(chat.Chat.Id, msg, parseMode: ParseMode.Markdown);
                 }
             }
         }

@@ -22,11 +22,6 @@ namespace Dota2Bot.Core.OpenDota
 
         private readonly object syncLock = new object();
 
-        public OpenDotaClient(IConfiguration config)
-        {
-            
-        }
-
         public List<Hero> Heroes()
         {
             RestRequest request = new RestRequest("heroes");

@@ -41,12 +41,12 @@ namespace Dota2Bot.Domain
                 .HasKey(x => new { x.ChatId, x.PlayerId });
         }
 
-        public DbSet<Hero> Heroes { get; set; }
-        public DbSet<Match> Matches { get; set; }
-        public DbSet<Player> Players { get; set; }
-        public DbSet<Rating> Ratings { get; set; }
+        public virtual DbSet<Hero> Heroes { get; set; }
+        public virtual DbSet<Match> Matches { get; set; }
+        public virtual DbSet<Player> Players { get; set; }
+        public virtual DbSet<Rating> Ratings { get; set; }
 
-        public DbSet<TgChat> Chats { get; set; }
-        public DbSet<TgChatPlayers> ChatPlayers { get; set; }
+        public virtual DbSet<TgChat> Chats { get; set; }
+        public virtual DbSet<TgChatPlayers> ChatPlayers { get; set; }
     }
 }

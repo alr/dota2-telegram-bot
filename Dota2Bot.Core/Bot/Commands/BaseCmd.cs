@@ -5,7 +5,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Domain;
+using Dota2Bot.Core.Engine;
+using Dota2Bot.Core.OpenDota;
+using Dota2Bot.Core.SteamApi;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 
 namespace Dota2Bot.Core.Bot.Commands
@@ -20,19 +24,36 @@ namespace Dota2Bot.Core.Bot.Commands
 
     public abstract class BaseCmd : IBotCmd
     {
-        protected TelegramBotClient Telegram { get; set; }
-        protected IConfiguration Config { get; set; }
+        private IServiceProvider serviceProvider;
+        
+        protected ITelegramBotClient Telegram { get; private set; }
+        protected DataManager DataManager { get; private set; }
+        protected OpenDotaClient OpenDota { get; private set; }
+        protected SteamClient SteamClient { get; private set; }
+        
+        protected abstract Task ExecuteHandler(long chatId, string args);
 
         public abstract string Cmd { get; }
         public abstract string Description { get; }
-        public abstract Task Execute(long chatId, string args);
 
-        public void SetConfiguration(IConfiguration config)
+        public Task Execute(long chatId, string args)
         {
-            this.Config = config;
+            using (var scope = serviceProvider.CreateScope())
+            {
+                this.DataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+                this.OpenDota = scope.ServiceProvider.GetRequiredService<OpenDotaClient>();
+                this.SteamClient = scope.ServiceProvider.GetRequiredService<SteamClient>();
+                
+                return ExecuteHandler(chatId, args);
+            }
         }
 
-        public void SetTelegram(TelegramBotClient telegram)
+        public void SetServiceProvider(IServiceProvider serviceProvider)
+        {
+            this.serviceProvider = serviceProvider;
+        }
+        
+        public void SetTelegram(ITelegramBotClient telegram)
         {
             this.Telegram = telegram;
         }

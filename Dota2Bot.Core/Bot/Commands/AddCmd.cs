@@ -16,7 +16,7 @@ namespace Dota2Bot.Core.Bot.Commands
         public override string Cmd => "add";
         public override string Description => "add subscription to dotabuff profile by id or link";
 
-        public override async Task Execute(long chatId, string args)
+        protected override async Task ExecuteHandler(long chatId, string args)
         {
             if (string.IsNullOrEmpty(args))
             {
@@ -30,35 +30,30 @@ namespace Dota2Bot.Core.Bot.Commands
                 await Telegram.SendTextMessageAsync(chatId, "Invalid dotabuff link or id");
                 return;
             }
+            
+            await Telegram.SendTextMessageAsync(chatId, "Saving... ");
 
-            using (DataManager dataManager = new DataManager(Config))
+            var player = DataManager.PlayerGet(playerId);
+            if (player == null)
             {
-                await Telegram.SendTextMessageAsync(chatId, "Saving... ");
-     
-                OpenDotaClient openDota = new OpenDotaClient(Config);
-
-                var player = dataManager.PlayerGet(playerId);
+                player = CollectPlayerData(DataManager, OpenDota, playerId);
                 if (player == null)
                 {
-                    player = CollectPlayerData(dataManager, openDota, playerId);
-                    if (player == null)
-                    {
-                        await Telegram.SendTextMessageAsync(chatId, "Player not found");
-                        return;
-                    }
+                    await Telegram.SendTextMessageAsync(chatId, "Player not found");
+                    return;
                 }
-
-                var chat = dataManager.ChatGetOrAdd(chatId, x => x.ChatPlayers);
-                var added = dataManager.ChatAddPlayer(chat, player);
-                
-                dataManager.SaveChanges();
-
-                var msg = added
-                    ? $"Player *{player.Name}* successfully added"
-                    : $"Player *{player.Name}* already in chat";
-
-                await Telegram.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
             }
+
+            var chat = DataManager.ChatGetOrAdd(chatId, x => x.ChatPlayers);
+            var added = DataManager.ChatAddPlayer(chat, player);
+            
+            DataManager.SaveChanges();
+
+            var msg = added
+                ? $"Player *{player.Name}* successfully added"
+                : $"Player *{player.Name}* already in chat";
+
+            await Telegram.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
         }
 
         private Player CollectPlayerData(DataManager dataManager, OpenDotaClient openDota, long playerId)

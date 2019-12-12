@@ -25,9 +25,9 @@ public class SteamClient
 
         public const string Dota2GameId = "570";
 
-        public SteamClient(IConfiguration config)
+        public SteamClient(string apiKey)
         {
-            this.apiKey = config["steam.ApiKey"];
+            this.apiKey = apiKey;
         }
 
         public List<PlayerSummariesResponse.Player> GetPlayerSummaries(List<string> steamIds)

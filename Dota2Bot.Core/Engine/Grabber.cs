@@ -11,14 +11,15 @@ using Dota2Bot.Domain;
 using Dota2Bot.Domain.Entity;
 using log4net;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Dota2Bot.Core.Engine
 {
     public class Grabber
     {
-        private readonly ILog logger = LogManager.GetLogger(typeof(Grabber));
-
-        private readonly IConfiguration config;
+        private readonly ILogger<Grabber> logger;
+        private readonly IServiceProvider serviceProvider;
 
         private readonly SteamClient steam;
         private readonly OpenDotaClient openDota;
@@ -29,16 +30,19 @@ namespace Dota2Bot.Core.Engine
         private Thread matchesThread;
         private Timer infoTimer;
 
-        public Grabber(IConfiguration config)
+        public Grabber(ILogger<Grabber> logger, IServiceProvider serviceProvider,
+            SteamClient steam, OpenDotaClient openDota, MatchNotifier matchNotifier)
         {
-            this.config = config;
-
-            steam = new SteamClient(config);
-            openDota = new OpenDotaClient(config);
-            matchNotifier = new MatchNotifier(config);
+            this.logger = logger;
+            this.serviceProvider = serviceProvider;
+            
+            this.steam = steam;
+            this.openDota = openDota;
+            
+            this.matchNotifier = matchNotifier;
         }
 
-        public void Start()
+        public void Start(CancellationToken cancellationToken)
         {
             CacheHeroes();
 
@@ -53,7 +57,7 @@ namespace Dota2Bot.Core.Engine
                     }
                     catch (Exception ex)
                     {
-                        logger.Error("MatchesThreadFunc", ex);
+                        logger.LogError(ex, "MatchesThreadFunc");
                     }
 
                     try
@@ -62,7 +66,7 @@ namespace Dota2Bot.Core.Engine
                     }
                     catch (Exception ex)
                     {
-                        logger.Error("OnlineThreadFunc", ex);
+                        logger.LogError(ex, "OnlineThreadFunc");
                     }
 
                     Thread.Sleep(TimeSpan.FromSeconds(30));
@@ -84,24 +88,24 @@ namespace Dota2Bot.Core.Engine
 
         private void InfoThreadFunc(object state)
         {
-            using (DataManager dataManager = new DataManager(config))
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+                
+            var players = dataManager.Players.ToList();
+
+            foreach (var player in players)
             {
-                var players = dataManager.Players.ToList();
-
-                foreach (var player in players)
+                var info = openDota.Player(player.Id);
+                if (info != null)
                 {
-                    var info = openDota.Player(player.Id);
-                    if (info != null)
-                    {
-                        player.Name = info.profile.personaname;
-                        player.SteamId = info.profile.steamid;
-                        player.SoloRank = info.solo_competitive_rank;
-                        player.PartyRank = info.competitive_rank;
-                        player.RankTier = info.rank_tier;
+                    player.Name = info.profile.personaname;
+                    player.SteamId = info.profile.steamid;
+                    player.SoloRank = info.solo_competitive_rank;
+                    player.PartyRank = info.competitive_rank;
+                    player.RankTier = info.rank_tier;
 
-                        dataManager.SaveChanges();
-                    }                   
-                }
+                    dataManager.SaveChanges();
+                }                   
             }
         }
 
@@ -110,85 +114,85 @@ namespace Dota2Bot.Core.Engine
 
         private async Task OnlineThreadFunc()
         {
-            using (DataManager dataManager = new DataManager(config))
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+            
+            var players = dataManager.Players.ToList();
+            var steamIds = players.Select(x => x.SteamId).ToList();
+            
+            var currSummaries = steam.GetPlayerSummaries(steamIds);
+            var currOnline = currSummaries.Where(x => x.gameid == SteamClient.Dota2GameId).Select(x => x.steamid).ToList();
+
+            if (prevOnline == null)
             {
-                var players = dataManager.Players.ToList();
-                var steamIds = players.Select(x => x.SteamId).ToList();
-                
-                var currSummaries = steam.GetPlayerSummaries(steamIds);
-                var currOnline = currSummaries.Where(x => x.gameid == SteamClient.Dota2GameId).Select(x => x.steamid).ToList();
-
-                if (prevOnline == null)
-                {
-                    prevOnline = currOnline;
-                    return;
-                }
-
-                var now = DateTime.UtcNow;
-                
-                var newOnline = currOnline.Except(prevOnline).ToList();
-                var newOffline = prevOnline.Except(currOnline).ToList();
-
                 prevOnline = currOnline;
-                
-                foreach (var online in newOnline)
-                {
-                    playersTimeCache[online] = new PlayerGameSession
-                    {
-                        SteamId = online,
-                        Start = now
-                    };
-                }
-                
-                List<PlayerGameSession> endSessions = new List<PlayerGameSession>();
-                foreach (var offline in newOffline)
-                {
-                    if (playersTimeCache.ContainsKey(offline))
-                    {
-                        var session = playersTimeCache[offline];
-                        session.End = now;
-
-                        endSessions.Add(session);
-
-                        playersTimeCache.Remove(offline);
-                    }
-                    else
-                    {
-                        endSessions.Add(new PlayerGameSession
-                        {
-                            SteamId = offline
-                        });
-                    }
-                }
-
-                await matchNotifier.NotifyStatusChats(newOnline, endSessions);
+                return;
             }
+
+            var now = DateTime.UtcNow;
+            
+            var newOnline = currOnline.Except(prevOnline).ToList();
+            var newOffline = prevOnline.Except(currOnline).ToList();
+
+            prevOnline = currOnline;
+            
+            foreach (var online in newOnline)
+            {
+                playersTimeCache[online] = new PlayerGameSession
+                {
+                    SteamId = online,
+                    Start = now
+                };
+            }
+            
+            List<PlayerGameSession> endSessions = new List<PlayerGameSession>();
+            foreach (var offline in newOffline)
+            {
+                if (playersTimeCache.ContainsKey(offline))
+                {
+                    var session = playersTimeCache[offline];
+                    session.End = now;
+
+                    endSessions.Add(session);
+
+                    playersTimeCache.Remove(offline);
+                }
+                else
+                {
+                    endSessions.Add(new PlayerGameSession
+                    {
+                        SteamId = offline
+                    });
+                }
+            }
+
+            await matchNotifier.NotifyStatusChats(newOnline, endSessions);
         }
 
         private async Task MatchesThreadFunc()
         {
-            using (DataManager dataManager = new DataManager(config))
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+            
+            var players = dataManager.Players.ToList();
+
+            // get new matches
+            var matches = CollectMatches(players);
+            if (matches.Count > 0)
             {
-                var players = dataManager.Players.ToList();
-
-                // get new matches
-                var matches = CollectMatches(players);
-                if (matches.Count > 0)
+                //check heroes data
+                var heroIds = matches.Select(x => x.HeroId).ToList();
+                if (heroIds.Except(heroesCacheIds).Any())
                 {
-                    //check heroes data
-                    var heroIds = matches.Select(x => x.HeroId).ToList();
-                    if (heroIds.Except(heroesCacheIds).Any())
-                    {
-                        UpdateHeroes();
-                    }
-
-                    dataManager.Matches.AddRange(matches);
-                    dataManager.SaveChanges();
-
-                    //send to telegram
-                    var matchIds = matches.Select(x => x.MatchId).Distinct().ToList();
-                    await matchNotifier.NotifyChats(matchIds);
+                    UpdateHeroes();
                 }
+
+                dataManager.Matches.AddRange(matches);
+                dataManager.SaveChanges();
+
+                //send to telegram
+                var matchIds = matches.Select(x => x.MatchId).Distinct().ToList();
+                await matchNotifier.NotifyChats(matchIds);
             }
         }
 
@@ -273,44 +277,44 @@ namespace Dota2Bot.Core.Engine
 
         void UpdateHeroes()
         {
-            using (DataManager dataManager = new DataManager(config))
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+            
+            var heroesLocal = dataManager.Heroes.ToDictionary(k => k.Id);
+            var heroesRemote = steam.GetHeroes().heroes.Select(x => new Hero
             {
-                var heroesLocal = dataManager.Heroes.ToDictionary(k => k.Id);
-                var heroesRemote = steam.GetHeroes().heroes.Select(x => new Hero
-                {
-                    Id = x.id,
-                    Name = x.localized_name
-                }).ToDictionary(k => k.Id);
+                Id = x.id,
+                Name = x.localized_name
+            }).ToDictionary(k => k.Id);
 
-                // добавляем Unknown Hero для поддержки связи с матчами, которые не были сыграны
-                heroesRemote[0] = new Hero {Id = 0, Name = "Unknown Hero"};
-                
-                foreach (var heroRemoteKey in heroesRemote.Keys)
-                {
-                    var hero = heroesRemote[heroRemoteKey];
+            // добавляем Unknown Hero для поддержки связи с матчами, которые не были сыграны
+            heroesRemote[0] = new Hero {Id = 0, Name = "Unknown Hero"};
+            
+            foreach (var heroRemoteKey in heroesRemote.Keys)
+            {
+                var hero = heroesRemote[heroRemoteKey];
 
-                    if (heroesLocal.ContainsKey(heroRemoteKey))
-                    {
-                        heroesLocal[heroRemoteKey].Name = hero.Name;
-                    }
-                    else
-                    {
-                        dataManager.Heroes.Add(hero);
-                    }
+                if (heroesLocal.ContainsKey(heroRemoteKey))
+                {
+                    heroesLocal[heroRemoteKey].Name = hero.Name;
                 }
-
-                dataManager.SaveChanges();
+                else
+                {
+                    dataManager.Heroes.Add(hero);
+                }
             }
+
+            dataManager.SaveChanges();
 
             CacheHeroes();
         }
 
         private void CacheHeroes()
         {
-            using (DataManager dataManager = new DataManager(config))
-            {
-                heroesCacheIds = dataManager.Heroes.Select(x => x.Id).ToList();
-            }
+            using var scope = serviceProvider.CreateScope();
+            var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
+            
+            heroesCacheIds = dataManager.Heroes.Select(x => x.Id).ToList();
         }
     }
 }

@@ -12,47 +12,44 @@ namespace Dota2Bot.Core.Bot.Commands
     {
         protected abstract DateTime GetDateStart(string timezone);
 
-        public override async Task Execute(long chatId, string args)
+        protected override async Task ExecuteHandler(long chatId, string args)
         {
-            using (DataManager dataManager = new DataManager(Config))
+            var chat = DataManager.ChatGet(chatId);
+            if (chat == null)
+                return;
+            
+            var dateStart = GetDateStart(chat.Timezone);
+
+            var report = DataManager.WeeklyReport(chatId, dateStart);
+            if (report == null)
             {
-                var chat = dataManager.ChatGet(chatId);
-                if (chat == null)
-                    return;
-                
-                var dateStart = GetDateStart(chat.Timezone);
-
-                var report = dataManager.WeeklyReport(chatId, dateStart);
-                if (report == null)
-                {
-                    await Telegram.SendTextMessageAsync(chatId, "No one played :(");
-                    return;
-                }
-
-                string msg = "*#* | " +
-                             "*Nick* | " +
-                             "*WinRate* | " +
-                             //"*KD* |" +
-                             "*Time*\r\n";
-
-                for (int i = 0; i < report.Players.Count; i++)
-                {
-                    var player = report.Players[i];
-
-                    TimeSpan t = TimeSpan.FromSeconds(player.TotalTime);
-                    string time = String.Format("{0:N1}", t.TotalHours);
-
-                    var str = $"{i + 1} | " +
-                              $"{player.Name.Markdown()} | " +
-                              $"{(player.WinRate == -1 ? "N/A" : player.WinRate.ToString("N2"))} | " +
-                              //$"{player.TotalKill} / {player.TotalDeath} | " +
-                              $"{time} ({player.Matches})\r\n";
-
-                    msg += str;
-                }
-
-                await Telegram.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
+                await Telegram.SendTextMessageAsync(chatId, "No one played :(");
+                return;
             }
+
+            string msg = "*#* | " +
+                         "*Nick* | " +
+                         "*WinRate* | " +
+                         //"*KD* |" +
+                         "*Time*\r\n";
+
+            for (int i = 0; i < report.Players.Count; i++)
+            {
+                var player = report.Players[i];
+
+                TimeSpan t = TimeSpan.FromSeconds(player.TotalTime);
+                string time = String.Format("{0:N1}", t.TotalHours);
+
+                var str = $"{i + 1} | " +
+                          $"{player.Name.Markdown()} | " +
+                          $"{(player.WinRate == -1 ? "N/A" : player.WinRate.ToString("N2"))} | " +
+                          //$"{player.TotalKill} / {player.TotalDeath} | " +
+                          $"{time} ({player.Matches})\r\n";
+
+                msg += str;
+            }
+
+            await Telegram.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
         }
     }
 
@@ -111,7 +108,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
         private int days;
 
-        public override async Task Execute(long chatId, string args)
+        protected override async Task ExecuteHandler(long chatId, string args)
         {
             if (!int.TryParse(args, out days) || days <= 0)
             {

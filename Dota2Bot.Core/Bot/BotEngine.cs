@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Bot.Commands;
-using log4net;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types.Enums;
@@ -14,25 +13,25 @@ namespace Dota2Bot.Core.Bot
 {
     public class BotEngine
     {
-        private readonly ILog logger = LogManager.GetLogger(typeof(BotEngine));
+        private readonly ILogger<BotEngine> logger;
+        private readonly IServiceProvider serviceProvider;
+        
+        private readonly ITelegramBotClient telegram;
 
-        private readonly IConfiguration config;
-        private readonly TelegramBotClient telegram;
-
-        public BotEngine(IConfiguration config)
+        public BotEngine(ILogger<BotEngine> logger, IServiceProvider serviceProvider, 
+            ITelegramBotClient telegram)
         {
-            this.config = config;
+            this.logger = logger;
+            this.serviceProvider = serviceProvider;
+            this.telegram = telegram;
 
-            var telegramKey = config["telegram.ApiKey"];
-            
-            telegram = new TelegramBotClient(telegramKey);
             telegram.OnMessage += BotOnMessageReceived;
             telegram.OnMessageEdited += BotOnMessageReceived;
         }
 
-        public void Start()
+        public void Start(CancellationToken cancellationToken)
         {
-            telegram.StartReceiving();
+            telegram.StartReceiving(cancellationToken: cancellationToken);
         }
 
         public void Stop()
@@ -84,7 +83,7 @@ namespace Dota2Bot.Core.Bot
             }
             catch (Exception ex)
             {
-                logger.Error("Cmd: " + update.Text, ex);
+                logger.LogError(ex,"Cmd: {update.Text}");
                 await telegram.SendTextMessageAsync(chatId, "An error has occurred, please try again");
             }
         }
@@ -117,7 +116,7 @@ namespace Dota2Bot.Core.Bot
 
             if (command is BaseCmd baseCmd)
             {
-                baseCmd.SetConfiguration(config);
+                baseCmd.SetServiceProvider(serviceProvider);
                 baseCmd.SetTelegram(telegram);
             }
 

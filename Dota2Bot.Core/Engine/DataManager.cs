@@ -12,21 +12,18 @@ using Microsoft.Extensions.Configuration;
 
 namespace Dota2Bot.Core.Engine
 {
-    public class DataManager : IDisposable
+    public class DataManager
     {
-        private Dota2DbContext dbContext;
+        private readonly Dota2DbContext dbContext;
 
         public DbSet<Hero> Heroes => dbContext.Heroes;
         public DbSet<Match> Matches => dbContext.Matches;
         public DbSet<Player> Players => dbContext.Players;
         public DbSet<Rating> Ratings => dbContext.Ratings;
 
-        public DataManager(IConfiguration config)
+        public DataManager(Dota2DbContext dbContext)
         {
-            var optionsBuilder = new DbContextOptionsBuilder<Dota2DbContext>();
-            optionsBuilder.UseNpgsql(config.GetConnectionString("DotaDb"));
-
-            dbContext = new Dota2DbContext(optionsBuilder.Options);
+            this.dbContext = dbContext;
         }
 
         public Player PlayerGet(long playerId)
@@ -187,28 +184,5 @@ namespace Dota2Bot.Core.Engine
         {
             return dbContext.SaveChanges();
         }
-
-        #region IDisposable
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                // free managed resources
-                if (dbContext != null)
-                {
-                    dbContext.Dispose();
-                    dbContext = null;
-                }
-            }
-        }
-
-        #endregion
     }
 }

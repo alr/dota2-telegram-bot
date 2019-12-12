@@ -1,9 +1,14 @@
+.DS_Store
+
 *.swp
 *.*~
 project.lock.json
 .DS_Store
 *.pyc
 nupkg/
+
+# Idea
+.idea
 
 # Visual Studio Code
 .vscode

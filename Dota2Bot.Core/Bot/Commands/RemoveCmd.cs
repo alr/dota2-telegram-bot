@@ -13,7 +13,7 @@ namespace Dota2Bot.Core.Bot.Commands
         public override string Cmd => "remove";
         public override string Description => "remove subscription to dotabuff profile by id";
 
-        public override async Task Execute(long chatId, string args)
+        protected override async Task ExecuteHandler(long chatId, string args)
         {
             if (String.IsNullOrEmpty(args))
             {
@@ -27,25 +27,22 @@ namespace Dota2Bot.Core.Bot.Commands
                 await Telegram.SendTextMessageAsync(chatId, "Invalid dotabuff link or id");
                 return;
             }
-
-            using (DataManager dataManager = new DataManager(Config))
+            
+            var player = DataManager.PlayerGet(playerId);
+            if (player == null)
             {
-                var player = dataManager.PlayerGet(playerId);
-                if (player == null)
-                {
-                    await Telegram.SendTextMessageAsync(chatId, "Player not found");
-                    return;
-                }
-
-                var chat = dataManager.ChatGet(chatId, x => x.ChatPlayers);
-                if (chat != null)
-                {
-                    dataManager.ChatRemovePlayer(chat, player);
-                    dataManager.SaveChanges();
-                }
-
-                await Telegram.SendTextMessageAsync(chatId, $"Player *{player.Name}* successfully removed", parseMode: ParseMode.Markdown);
+                await Telegram.SendTextMessageAsync(chatId, "Player not found");
+                return;
             }
+
+            var chat = DataManager.ChatGet(chatId, x => x.ChatPlayers);
+            if (chat != null)
+            {
+                DataManager.ChatRemovePlayer(chat, player);
+                DataManager.SaveChanges();
+            }
+
+            await Telegram.SendTextMessageAsync(chatId, $"Player *{player.Name}* successfully removed", parseMode: ParseMode.Markdown);
         }
     }
 }

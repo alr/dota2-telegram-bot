@@ -8,6 +8,7 @@ using Dota2Bot.Core.Bot;
 using Dota2Bot.Core.Engine;
 using Dota2Bot.Core.OpenDota;
 using Dota2Bot.Core.SteamApi;
+using Dota2Bot.Domain;
 using log4net;
 using log4net.Config;
 using Microsoft.Extensions.Configuration;
