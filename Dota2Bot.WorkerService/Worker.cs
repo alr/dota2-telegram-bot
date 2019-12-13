@@ -27,13 +27,21 @@ namespace Dota2Bot.WorkerService
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await dota2DbContext.Database.EnsureCreatedAsync(stoppingToken);
-            await dota2DbContext.Database.MigrateAsync(cancellationToken: stoppingToken);
-            
-            botEngine.Start(stoppingToken);
-            grabber.Start(stoppingToken);
-            
-            await Task.Delay(Timeout.Infinite, stoppingToken);
+            try
+            {
+                //await dota2DbContext.Database.EnsureCreatedAsync(stoppingToken);
+                await dota2DbContext.Database.MigrateAsync(cancellationToken: stoppingToken);
+
+                botEngine.Start(stoppingToken);
+                grabber.Start(stoppingToken);
+
+                await Task.Delay(Timeout.Infinite, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                await Task.CompletedTask;
+            }
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)
