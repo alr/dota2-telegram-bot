@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Bot.Commands;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Args;
@@ -14,15 +15,15 @@ namespace Dota2Bot.Core.Bot
     public class BotEngine
     {
         private readonly ILogger<BotEngine> logger;
-        private readonly IServiceProvider serviceProvider;
+        private readonly IServiceScopeFactory serviceScopeFactory;
         
         private readonly ITelegramBotClient telegram;
 
-        public BotEngine(ILogger<BotEngine> logger, IServiceProvider serviceProvider, 
+        public BotEngine(ILogger<BotEngine> logger, IServiceScopeFactory serviceScopeFactory, 
             ITelegramBotClient telegram)
         {
             this.logger = logger;
-            this.serviceProvider = serviceProvider;
+            this.serviceScopeFactory = serviceScopeFactory;
             this.telegram = telegram;
 
             telegram.OnMessage += BotOnMessageReceived;
@@ -116,7 +117,7 @@ namespace Dota2Bot.Core.Bot
 
             if (command is BaseCmd baseCmd)
             {
-                baseCmd.SetServiceProvider(serviceProvider);
+                baseCmd.SetServiceProvider(serviceScopeFactory);
                 baseCmd.SetTelegram(telegram);
             }
 

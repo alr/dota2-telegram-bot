@@ -19,7 +19,7 @@ namespace Dota2Bot.Core.Engine
     public class Grabber
     {
         private readonly ILogger<Grabber> logger;
-        private readonly IServiceProvider serviceProvider;
+        private readonly IServiceScopeFactory serviceScopeFactory;
 
         private readonly SteamClient steam;
         private readonly OpenDotaClient openDota;
@@ -30,11 +30,11 @@ namespace Dota2Bot.Core.Engine
         private Thread matchesThread;
         private Timer infoTimer;
 
-        public Grabber(ILogger<Grabber> logger, IServiceProvider serviceProvider,
+        public Grabber(ILogger<Grabber> logger, IServiceScopeFactory serviceScopeFactory,
             SteamClient steam, OpenDotaClient openDota, MatchNotifier matchNotifier)
         {
             this.logger = logger;
-            this.serviceProvider = serviceProvider;
+            this.serviceScopeFactory = serviceScopeFactory;
             
             this.steam = steam;
             this.openDota = openDota;
@@ -89,7 +89,7 @@ namespace Dota2Bot.Core.Engine
 
         private void InfoThreadFunc(object state)
         {
-            using var scope = serviceProvider.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
                 
             var players = dataManager.Players.ToList();
@@ -115,7 +115,7 @@ namespace Dota2Bot.Core.Engine
 
         private async Task OnlineThreadFunc()
         {
-            using var scope = serviceProvider.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
             
             var players = dataManager.Players.ToList();
@@ -172,7 +172,7 @@ namespace Dota2Bot.Core.Engine
 
         private async Task MatchesThreadFunc()
         {
-            using var scope = serviceProvider.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
             
             var players = dataManager.Players.ToList();
@@ -278,7 +278,7 @@ namespace Dota2Bot.Core.Engine
 
         void UpdateHeroes()
         {
-            using var scope = serviceProvider.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
             
             var heroesLocal = dataManager.Heroes.ToDictionary(k => k.Id);
@@ -312,7 +312,7 @@ namespace Dota2Bot.Core.Engine
 
         private void CacheHeroes()
         {
-            using var scope = serviceProvider.CreateScope();
+            using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
             
             heroesCacheIds = dataManager.Heroes.Select(x => x.Id).ToList();

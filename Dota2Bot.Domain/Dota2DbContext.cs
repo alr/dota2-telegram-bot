@@ -4,7 +4,6 @@ using System.Text;
 using Dota2Bot.Domain.Entity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Debug;
 
 namespace Dota2Bot.Domain
 {

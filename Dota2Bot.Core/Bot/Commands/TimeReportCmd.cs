@@ -116,7 +116,7 @@ namespace Dota2Bot.Core.Bot.Commands
                 return;
             }
 
-            await base.Execute(chatId, args);
+            await base.ExecuteHandler(chatId, args);
         }
 
         protected override DateTime GetDateStart(string timezone)

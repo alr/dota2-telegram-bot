@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
     <PropertyGroup>
+        <OutputType>Exe</OutputType>
         <TargetFramework>netcoreapp3.1</TargetFramework>
         <UserSecretsId>dotnet-Dota2Bot.WorkerService-CF4C5008-2A3D-41FC-B168-758EAA4B3B5C</UserSecretsId>
+        <LangVersion>latest</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

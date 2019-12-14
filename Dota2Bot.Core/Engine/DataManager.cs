@@ -131,6 +131,8 @@ namespace Dota2Bot.Core.Engine
                 .SelectMany(x => x.Matches.Where(k => k.DateStart >= dateStart));
 
             var stats = mathesQeury
+                .Include(x => x.Player)
+                .ToList()
                 .GroupBy(x => x.PlayerId)
                 .Select(g => new WeeklyPlayerModel
                 {
@@ -156,7 +158,7 @@ namespace Dota2Bot.Core.Engine
                 return null;
             }
 
-            var total = mathesQeury
+            var total = mathesQeury.ToList()
                 .GroupBy(x => x.MatchId)
                 .Select(g => new
                 {

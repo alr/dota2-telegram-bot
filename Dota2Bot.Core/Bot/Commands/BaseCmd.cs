@@ -8,7 +8,6 @@ using Dota2Bot.Core.Domain;
 using Dota2Bot.Core.Engine;
 using Dota2Bot.Core.OpenDota;
 using Dota2Bot.Core.SteamApi;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 
@@ -24,7 +23,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
     public abstract class BaseCmd : IBotCmd
     {
-        private IServiceProvider serviceProvider;
+        private IServiceScopeFactory serviceScopeFactory;
         
         protected ITelegramBotClient Telegram { get; private set; }
         protected DataManager DataManager { get; private set; }
@@ -38,7 +37,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
         public async Task Execute(long chatId, string args)
         {
-            using (var scope = serviceProvider.CreateScope())
+            using (var scope = serviceScopeFactory.CreateScope())
             {
                 this.DataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
                 this.OpenDota = scope.ServiceProvider.GetRequiredService<OpenDotaClient>();
@@ -48,9 +47,9 @@ namespace Dota2Bot.Core.Bot.Commands
             }
         }
 
-        public void SetServiceProvider(IServiceProvider serviceProvider)
+        public void SetServiceProvider(IServiceScopeFactory serviceScopeFactory)
         {
-            this.serviceProvider = serviceProvider;
+            this.serviceScopeFactory = serviceScopeFactory;
         }
         
         public void SetTelegram(ITelegramBotClient telegram)
