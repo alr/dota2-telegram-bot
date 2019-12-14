@@ -36,7 +36,7 @@ namespace Dota2Bot.Core.Bot.Commands
         public abstract string Cmd { get; }
         public abstract string Description { get; }
 
-        public Task Execute(long chatId, string args)
+        public async Task Execute(long chatId, string args)
         {
             using (var scope = serviceProvider.CreateScope())
             {
@@ -44,7 +44,7 @@ namespace Dota2Bot.Core.Bot.Commands
                 this.OpenDota = scope.ServiceProvider.GetRequiredService<OpenDotaClient>();
                 this.SteamClient = scope.ServiceProvider.GetRequiredService<SteamClient>();
                 
-                return ExecuteHandler(chatId, args);
+                await ExecuteHandler(chatId, args);
             }
         }
 

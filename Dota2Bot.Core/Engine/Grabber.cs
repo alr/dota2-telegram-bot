@@ -44,6 +44,7 @@ namespace Dota2Bot.Core.Engine
 
         public void Start(CancellationToken cancellationToken)
         {
+            UpdateHeroes();
             CacheHeroes();
 
             // thread for collect dota stats and send TG notifications

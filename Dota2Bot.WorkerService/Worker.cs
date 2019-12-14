@@ -7,6 +7,7 @@ using Dota2Bot.Core.Bot;
 using Dota2Bot.Core.Engine;
 using Dota2Bot.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -14,32 +15,37 @@ namespace Dota2Bot.WorkerService
 {
     public class Worker : BackgroundService
     {
-        private readonly Dota2DbContext dota2DbContext;
-        private readonly BotEngine botEngine;
-        private readonly Grabber grabber;
+        private readonly IServiceScopeFactory scopeFactory;
+        private BotEngine botEngine;
+        private Grabber grabber;
 
-        public Worker(Dota2DbContext dota2DbContext, BotEngine botEngine, Grabber grabber)
+        public Worker(IServiceScopeFactory scopeFactory)
         {
-            this.dota2DbContext = dota2DbContext;
-            this.botEngine = botEngine;
-            this.grabber = grabber;
+            this.scopeFactory = scopeFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             try
             {
+                using var scope = scopeFactory.CreateScope();
+                botEngine = scope.ServiceProvider.GetRequiredService<BotEngine>();
+                grabber = scope.ServiceProvider.GetRequiredService<Grabber>();
+                    
+                var dota2DbContext = scope.ServiceProvider.GetRequiredService<Dota2DbContext>();
+
                 //await dota2DbContext.Database.EnsureCreatedAsync(stoppingToken);
                 await dota2DbContext.Database.MigrateAsync(cancellationToken: stoppingToken);
-
+                    
                 botEngine.Start(stoppingToken);
                 grabber.Start(stoppingToken);
-
+                    
                 await Task.Delay(Timeout.Infinite, stoppingToken);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
+                
                 await Task.CompletedTask;
             }
         }
