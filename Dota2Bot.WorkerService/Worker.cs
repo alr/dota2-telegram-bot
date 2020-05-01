@@ -33,8 +33,7 @@ namespace Dota2Bot.WorkerService
                 grabber = scope.ServiceProvider.GetRequiredService<Grabber>();
                     
                 var dota2DbContext = scope.ServiceProvider.GetRequiredService<Dota2DbContext>();
-
-                //await dota2DbContext.Database.EnsureCreatedAsync(stoppingToken);
+                
                 await dota2DbContext.Database.MigrateAsync(cancellationToken: stoppingToken);
                     
                 botEngine.Start(stoppingToken);
