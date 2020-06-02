@@ -1,11 +1,10 @@
-run db
+## Сборка образа
+Необходимо *tag* вместо указать версию тега
 ```
-docker run -d \
-    --name=dota_db \
-    -e POSTGRES_USER=postgres \
-    -e POSTGRES_PASSWORD=Qwerty_6 \
-    -e ALLOW_IP_RANGE=0.0.0.0/0 \
-    -p 5432:5432 \
-    -v ~/docker/dota2bot:/var/lib/postgresql/data \
-    postgres:11
+docker build -t alr1wn0/dota-telegram-bot:tag -f Dota2Bot.WorkerService/Dockerfile .
+```
+
+## Запуск сервиса
+```
+docker-compose up -d
 ```
