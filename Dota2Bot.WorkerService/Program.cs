@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,19 +22,20 @@ namespace Dota2Bot.WorkerService
             CreateHostBuilder(args).Build().Run();
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0022:Use block body for methods", Justification = "<Pending>")]
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
                 .ConfigureServices((hostContext, services) =>
                 { 
                     services.AddDbContext<Dota2DbContext>(
-                        builder => builder.UseNpgsql(hostContext.Configuration.GetConnectionString("DotaDb")), 
+                        builder => builder.UseNpgsql(hostContext.Configuration.GetConnectionString("DB")), 
                         ServiceLifetime.Transient);
 
                     services.AddTransient<DataManager>();
-                    services.AddTransient<SteamClient>(provider => new SteamClient(hostContext.Configuration["steam.ApiKey"]));
+                    services.AddTransient<SteamClient>(provider => new SteamClient(hostContext.Configuration["STEAM_API_KEY"]));
                     services.AddTransient<OpenDotaClient>();
                     services.AddTransient<MatchNotifier>();
-                    services.AddTransient<ITelegramBotClient>(provider => new TelegramBotClient(hostContext.Configuration["telegram.ApiKey"]));
+                    services.AddTransient<ITelegramBotClient>(provider => new TelegramBotClient(hostContext.Configuration["TELEGRAM_API_KEY"]));
                     
                     services.AddSingleton<BotEngine>();
                     services.AddSingleton<Grabber>();
