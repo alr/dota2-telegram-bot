@@ -1,0 +1,21 @@
+version: '3.4'
+
+services:
+  db:
+    image: postgres:11
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dotabot
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+
+  dota2bot.service:
+    image: alr1wn0/dota2-telegram-bot:1.0
+    restart: always
+    environment:
+      DB: PostgreSQL_CONNECTION_STRING (e.g. Server=db;Port=5432;Database=dotastat;User Id=postgres;Password=dotabot;)
+      STEAM_API_KEY: STEAM_API_KEY
+      TELEGRAM_API_KEY: TELEGRAM_API_KEY
+    depends_on:
+      - db
