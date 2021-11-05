@@ -24,14 +24,16 @@ namespace Dota2Bot.Core.Engine
         private readonly SteamClient steam;
         private readonly OpenDotaClient openDota;
         private readonly MatchNotifier matchNotifier;
-        
+        private readonly SteamAppsCache steamAppsCache;
+
         private List<int> heroesCacheIds;
 
         private Thread matchesThread;
         private Timer infoTimer;
 
         public Grabber(ILogger<Grabber> logger, IServiceScopeFactory serviceScopeFactory,
-            SteamClient steam, OpenDotaClient openDota, MatchNotifier matchNotifier)
+            SteamClient steam, OpenDotaClient openDota, MatchNotifier matchNotifier,
+            SteamAppsCache steamAppsCache)
         {
             this.logger = logger;
             this.serviceScopeFactory = serviceScopeFactory;
@@ -40,6 +42,7 @@ namespace Dota2Bot.Core.Engine
             this.openDota = openDota;
             
             this.matchNotifier = matchNotifier;
+            this.steamAppsCache = steamAppsCache;
         }
 
         public void Start(CancellationToken cancellationToken)
@@ -110,64 +113,61 @@ namespace Dota2Bot.Core.Engine
             }
         }
 
-        private List<string> prevOnline;
-        private Dictionary<string, PlayerGameSession> playersTimeCache = new Dictionary<string, PlayerGameSession>();
+        private Dictionary<string, OnlineGrabber> onlineGrabbers = new Dictionary<string, OnlineGrabber>();
 
         private async Task OnlineThreadFunc()
         {
             using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
-            
+
             var players = dataManager.Players.ToList();
             var steamIds = players.Select(x => x.SteamId).ToList();
-            
-            var currSummaries = steam.GetPlayerSummaries(steamIds);
-            var currOnline = currSummaries.Where(x => x.gameid == SteamClient.Dota2GameId).Select(x => x.steamid).ToList();
 
-            if (prevOnline == null)
+            var summary = steam.GetPlayerSummaries(steamIds);
+
+            var currOnlineByGames = summary
+                .Where(x => x.gameid != null)
+                .GroupBy(x => x.gameid)
+                .ToDictionary(k => k.Key, v => v.Select(x => x.steamid).ToList());
+
+            var games = currOnlineByGames.Keys.ToList();
+            var emptyGames = onlineGrabbers.Where(x => !games.Contains(x.Key)).ToList();
+
+            foreach (var grabber in emptyGames)
             {
-                prevOnline = currOnline;
-                return;
+                await grabber.Value.CheckOnline(new List<string>());
             }
 
-            var now = DateTime.UtcNow;
-            
-            var newOnline = currOnline.Except(prevOnline).ToList();
-            var newOffline = prevOnline.Except(currOnline).ToList();
+            bool updateGamesCache = false;
 
-            prevOnline = currOnline;
-            
-            foreach (var online in newOnline)
+            foreach (var game in currOnlineByGames)
             {
-                playersTimeCache[online] = new PlayerGameSession
-                {
-                    SteamId = online,
-                    Start = now
-                };
-            }
-            
-            List<PlayerGameSession> endSessions = new List<PlayerGameSession>();
-            foreach (var offline in newOffline)
-            {
-                if (playersTimeCache.ContainsKey(offline))
-                {
-                    var session = playersTimeCache[offline];
-                    session.End = now;
+                var gameId = game.Key;
+                var currOnline = game.Value;
 
-                    endSessions.Add(session);
-
-                    playersTimeCache.Remove(offline);
+                if (onlineGrabbers.ContainsKey(gameId))
+                {
+                    await onlineGrabbers[gameId].CheckOnline(currOnline);
                 }
                 else
                 {
-                    endSessions.Add(new PlayerGameSession
+                    var gameTitle = steamAppsCache.GetGameById(gameId);
+                    if (gameTitle != null)
                     {
-                        SteamId = offline
-                    });
+                        onlineGrabbers[gameId] = new OnlineGrabber(matchNotifier, gameTitle);
+                        await onlineGrabbers[gameId].CheckOnline(currOnline);
+                    }
+                    else
+                    {
+                        updateGamesCache = true;
+                    }
                 }
             }
 
-            await matchNotifier.NotifyStatusChats(newOnline, endSessions);
+            if (updateGamesCache)
+            {
+                steamAppsCache.UpdateCache();
+            }
         }
 
         private async Task MatchesThreadFunc()

@@ -150,7 +150,7 @@ namespace Dota2Bot.Core.Engine
 
         #region Online
 
-        public async Task NotifyStatusChats(List<string> newOnline, List<PlayerGameSession> newOffline)
+        public async Task NotifyStatusChats(List<string> newOnline, List<PlayerGameSession> newOffline, string game)
         {
             if (newOnline.Count == 0 && newOffline.Count == 0)
                 return;
@@ -195,7 +195,7 @@ namespace Dota2Bot.Core.Engine
                 var online = chat.Players.Where(x => newOnline.Contains(x.SteamId)).ToList();
                 if (online.Count > 0)
                 {
-                    var lines = online.Select(x => $"*{x.Name.Markdown()}* connected");
+                    var lines = online.Select(x => $"*{x.Name.Markdown()}* connected to *{game.Markdown()}*");
                     var msg = string.Join("\n", lines);
 
                     await telegram.SendTextMessageAsync(chat.Chat.Id, msg, parseMode: ParseMode.Markdown);
@@ -216,7 +216,7 @@ namespace Dota2Bot.Core.Engine
                 {
                     var lines = offline.Select(x =>
                     {
-                        var str = $"*{x.PlayerName.Markdown()}* disconnected";
+                        var str = $"*{x.PlayerName.Markdown()}* disconnected from *{game.Markdown()}*";
 
                         if (x.Stat != null)
                             str += $" || {x.Stat.Value:+#;-#;0}";

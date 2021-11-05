@@ -31,10 +31,13 @@ namespace Dota2Bot.WorkerService
                 using var scope = scopeFactory.CreateScope();
                 botEngine = scope.ServiceProvider.GetRequiredService<BotEngine>();
                 grabber = scope.ServiceProvider.GetRequiredService<Grabber>();
-                    
+                
+                var steamAppsCache = scope.ServiceProvider.GetRequiredService<SteamAppsCache>();    
                 var dota2DbContext = scope.ServiceProvider.GetRequiredService<Dota2DbContext>();
                 
                 await dota2DbContext.Database.MigrateAsync(cancellationToken: stoppingToken);
+
+                steamAppsCache.Init();
                     
                 botEngine.Start(stoppingToken);
                 grabber.Start(stoppingToken);

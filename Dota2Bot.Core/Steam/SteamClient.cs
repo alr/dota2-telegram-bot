@@ -73,6 +73,15 @@ public class SteamClient
             return response?.result;
         }
 
+        public List<SteamApp> GetGames()
+        {
+            RestRequest request = new RestRequest("ISteamApps/GetAppList/v0002/");
+            
+            var response = Execute<GamesResponse>(request);
+
+            return response?.applist.apps;
+        }
+
         private T Execute<T>(RestRequest request) where T : class, new()
         {
             lock (syncLock)

@@ -29,6 +29,7 @@ namespace Dota2Bot.Core.Bot.Commands
         protected DataManager DataManager { get; private set; }
         protected OpenDotaClient OpenDota { get; private set; }
         protected SteamClient SteamClient { get; private set; }
+        protected SteamAppsCache SteamAppsCache { get; private set; }
         
         protected abstract Task ExecuteHandler(long chatId, string args);
 
@@ -42,6 +43,7 @@ namespace Dota2Bot.Core.Bot.Commands
                 this.DataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
                 this.OpenDota = scope.ServiceProvider.GetRequiredService<OpenDotaClient>();
                 this.SteamClient = scope.ServiceProvider.GetRequiredService<SteamClient>();
+                this.SteamAppsCache = scope.ServiceProvider.GetRequiredService<SteamAppsCache>();
                 
                 await ExecuteHandler(chatId, args);
             }

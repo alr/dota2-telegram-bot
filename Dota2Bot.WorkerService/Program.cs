@@ -39,6 +39,7 @@ namespace Dota2Bot.WorkerService
                     
                     services.AddSingleton<BotEngine>();
                     services.AddSingleton<Grabber>();
+                    services.AddSingleton<SteamAppsCache>();
                     
                     services.AddHostedService<Worker>();
                 });
