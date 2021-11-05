@@ -15,7 +15,7 @@ services:
     restart: always
     environment:
       DB: Server=db;Port=5432;Database=dotastat;User Id=postgres;Password=dotabot;
-      STEAM_API_KEY: 522475766263B7CF845BD30EDBAAA5A0
-      TELEGRAM_API_KEY: 192156931:AAGZpH3gnDm4cutqSwTtRJ-RpyLqyZJMxtw
+      STEAM_API_KEY: <STEAM_API_KEY>
+      TELEGRAM_API_KEY: <TELEGRAM_API_KEY>
     depends_on:
       - db
