@@ -20,7 +20,9 @@ namespace Dota2Bot.Core.Engine
             var games = steam.GetGames();
             if (games != null) 
             {
-                steamApps = games.ToDictionary(k => k.appid, v => v.name);
+                steamApps = games
+                    .GroupBy(x => x.appid)
+                    .ToDictionary(k => k.Key, v => v.First().name);
             }
         }
 
