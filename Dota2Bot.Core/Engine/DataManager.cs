@@ -141,7 +141,7 @@ namespace Dota2Bot.Core.Engine
                     KillsAvg = (int) Math.Round(g.Average(x => x.Kills)),
                     KillsMax = g.Max(x => x.Kills),
                     Matches = g.Count(),
-                    WinRate = g.Count() >= 3 ? g.Count(x => x.Won) * 100.0 / g.Count() : -1,
+                    WinRate = g.Count() >= 1 ? g.Count(x => x.Won) * 100.0 / g.Count() : -1,
                     TotalTime = g.Sum(x => x.Duration.TotalSeconds),
                     TotalKill = g.Sum(x => x.Kills),
                     TotalDeath = g.Sum(x => x.Deaths),
