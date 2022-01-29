@@ -2,7 +2,7 @@ version: '3.4'
 
 services:
   db:
-    image: postgres:11
+    image: postgres:12
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -11,7 +11,7 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
 
   dota2bot.service:
-    image: alr1wn0/dota2-telegram-bot:1.0
+    image: alr1wn0/dota2-telegram-bot:2.0
     restart: always
     environment:
       DB: Server=db;Port=5432;Database=dotastat;User Id=postgres;Password=dotabot;
@@ -19,3 +19,4 @@ services:
       TELEGRAM_API_KEY: <TELEGRAM_API_KEY>
     depends_on:
       - db
+    entrypoint: ["./wait-for-it.sh", "db:5432", "--", "dotnet", "Dota2Bot.WorkerService.dll"]

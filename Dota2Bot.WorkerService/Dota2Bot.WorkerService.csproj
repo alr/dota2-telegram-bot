@@ -5,6 +5,7 @@
         <TargetFramework>net6.0</TargetFramework>
         <UserSecretsId>dotnet-Dota2Bot.WorkerService-CF4C5008-2A3D-41FC-B168-758EAA4B3B5C</UserSecretsId>
         <LangVersion>latest</LangVersion>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,6 +14,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.14.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.3" />
         <PackageReference Include="Telegram.Bot" Version="17.0.0" />
     </ItemGroup>
