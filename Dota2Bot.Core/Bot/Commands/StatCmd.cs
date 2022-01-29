@@ -14,12 +14,18 @@ namespace Dota2Bot.Core.Bot.Commands
     class StatCmd: BaseCmd
     {
         public override string Cmd => "stat";
-        public override string Description => "show statistics for all players";
+        public override string Description => "show statistics for all players for all time or number of days ago";
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
             var players = DataManager.ChatGetPlayers(chatId)
                     .OrderByDescending(x => x.WinRate()).ToList();
+
+            if (int.TryParse(args, out var days))
+            {
+                var date = DateTime.UtcNow.AddDays(-days);
+                players = players.Where(x => x.LastMatchDate >= date).ToList();
+            }
 
             List<string> summary = new List<string>();
             for (int i = 0; i < players.Count; i++)
