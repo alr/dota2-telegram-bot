@@ -1,5 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Dota2Bot.Core.SteamApi;
 
 namespace Dota2Bot.Core.Engine
@@ -15,9 +16,9 @@ namespace Dota2Bot.Core.Engine
             this.steam = steam;
         }
 
-        public void Init()
+        public async Task Init()
         {
-            var games = steam.GetGames();
+            var games = await steam.GetGames();
             if (games != null) 
             {
                 steamApps = games
@@ -26,9 +27,9 @@ namespace Dota2Bot.Core.Engine
             }
         }
 
-        public void UpdateCache()
+        public async Task UpdateCache()
         {
-            Init();
+            await Init();
         }
 
         public string GetGameById(string gameId)

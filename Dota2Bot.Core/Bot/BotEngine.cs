@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Extensions.Polling;
+using Telegram.Bot.Types;
+using Telegram.Bot.Exceptions;
 
 namespace Dota2Bot.Core.Bot
 {
@@ -19,46 +22,68 @@ namespace Dota2Bot.Core.Bot
         
         private readonly ITelegramBotClient telegram;
 
+        private CancellationTokenSource cts;
+
         public BotEngine(ILogger<BotEngine> logger, IServiceScopeFactory serviceScopeFactory, 
             ITelegramBotClient telegram)
         {
             this.logger = logger;
             this.serviceScopeFactory = serviceScopeFactory;
             this.telegram = telegram;
-
-            telegram.OnMessage += BotOnMessageReceived;
-            telegram.OnMessageEdited += BotOnMessageReceived;
         }
 
-        public void Start(CancellationToken cancellationToken)
+        public async Task Start()
         {
-            telegram.StartReceiving(cancellationToken: cancellationToken);
+            cts = new CancellationTokenSource();
+            var cancellationToken = cts.Token;
+
+            var receiverOptions = new ReceiverOptions
+            {
+                AllowedUpdates = new [] { UpdateType.Message, UpdateType.EditedMessage }
+            };
+
+            telegram.StartReceiving(
+                HandleUpdateAsync,
+                HandleErrorAsync,
+                receiverOptions,
+                cancellationToken);
+
+            await Task.CompletedTask;
         }
 
         public void Stop()
         {
-            telegram.StopReceiving();
+            cts.Cancel();
         }
 
-        private async void BotOnMessageReceived(object sender, MessageEventArgs messageEventArgs)
+        private async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            var update = messageEventArgs.Message;
+            if (exception is ApiRequestException apiRequestException)
+            {
+                //await botClient.SendTextMessageAsync(123, apiRequestException.ToString());
+                await Task.CompletedTask;
+            }
+        }
 
-            if (update == null || update.Chat == null || update.Type != MessageType.Text)
+        private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+        {
+            var message = update.Message;
+
+            if (message == null || message.Chat == null || message.Type != MessageType.Text)
                 return;
 
-            if (string.IsNullOrEmpty(update.Text) || update.Text.Length < 2)
+            if (string.IsNullOrEmpty(message.Text) || message.Text.Length < 2)
                 return;
 
-            var chatId = update.Chat.Id;
+            var chatId = message.Chat.Id;
 
             try
             {
-                var message = update.Text.Substring(1);
+                var text = message.Text.Substring(1);
 
-                if (!string.IsNullOrEmpty(message))
+                if (!string.IsNullOrEmpty(text))
                 {
-                    var data = message.Split(new[] {' '}, 2, StringSplitOptions.RemoveEmptyEntries);
+                    var data = text.Split(new[] {' '}, 2, StringSplitOptions.RemoveEmptyEntries);
 
                     var cmd = data[0].Split('@')[0].ToLower().Trim(); // убираем имя бота и получаем команду
                     var args = data.Length == 2 ? data[1].Trim() : null;
@@ -84,7 +109,7 @@ namespace Dota2Bot.Core.Bot
             }
             catch (Exception ex)
             {
-                logger.LogError(ex,"Cmd: {update.Text}");
+                logger.LogError(ex,$"Cmd: {message.Text}");
                 await telegram.SendTextMessageAsync(chatId, "An error has occurred, please try again");
             }
         }

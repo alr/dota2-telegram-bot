@@ -9,7 +9,6 @@ using Dota2Bot.Core.OpenDota;
 using Dota2Bot.Core.SteamApi;
 using Dota2Bot.Domain;
 using Dota2Bot.Domain.Entity;
-using log4net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -45,9 +44,9 @@ namespace Dota2Bot.Core.Engine
             this.steamAppsCache = steamAppsCache;
         }
 
-        public void Start(CancellationToken cancellationToken)
+        public async Task Start()
         {
-            UpdateHeroes();
+            await UpdateHeroes();
             CacheHeroes();
 
             // thread for collect dota stats and send TG notifications
@@ -92,6 +91,18 @@ namespace Dota2Bot.Core.Engine
 
         private void InfoThreadFunc(object state)
         {
+            try
+            {
+                Task.Run(async () => await InfoThreadFuncHandler());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "InfoThreadFunc");
+            }
+        }
+
+        private async Task InfoThreadFuncHandler()
+        {
             using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
                 
@@ -99,7 +110,7 @@ namespace Dota2Bot.Core.Engine
 
             foreach (var player in players)
             {
-                var info = openDota.Player(player.Id);
+                var info = await openDota.Player(player.Id);
                 if (info != null)
                 {
                     player.Name = info.profile.personaname;
@@ -123,7 +134,7 @@ namespace Dota2Bot.Core.Engine
             var players = dataManager.Players.ToList();
             var steamIds = players.Select(x => x.SteamId).ToList();
 
-            var summary = steam.GetPlayerSummaries(steamIds);
+            var summary = await steam.GetPlayerSummaries(steamIds);
 
             var currOnlineByGames = summary
                 .Where(x => x.gameid != null)
@@ -166,7 +177,7 @@ namespace Dota2Bot.Core.Engine
 
             if (updateGamesCache)
             {
-                steamAppsCache.UpdateCache();
+                await steamAppsCache.UpdateCache();
             }
         }
 
@@ -178,14 +189,14 @@ namespace Dota2Bot.Core.Engine
             var players = dataManager.Players.ToList();
 
             // get new matches
-            var matches = CollectMatches(players);
+            var matches = await CollectMatches(players);
             if (matches.Count > 0)
             {
                 //check heroes data
                 var heroIds = matches.Select(x => x.HeroId).ToList();
                 if (heroIds.Except(heroesCacheIds).Any())
                 {
-                    UpdateHeroes();
+                    await UpdateHeroes();
                 }
 
                 dataManager.Matches.AddRange(matches);
@@ -197,21 +208,21 @@ namespace Dota2Bot.Core.Engine
             }
         }
 
-        public List<Match> CollectMatches(List<Player> players)
+        public async Task<List<Match>> CollectMatches(List<Player> players)
         {
             var playerIds = players.Select(x => x.Id).ToList();
             var matchIds = new HashSet<long>();
 
             foreach (var player in players)
             {
-                var ids = GetMatchIds(player);
+                var ids = await GetMatchIds(player);
                 matchIds.UnionWith(ids);
             }
             
             List<Match> matches = new List<Match>();
             foreach (var matchId in matchIds)
             {
-                var match = steam.GetMatchDetails(matchId);
+                var match = await steam.GetMatchDetails(matchId);
                 var gamePlayers = match.players.Where(x => playerIds.Contains(x.account_id)).ToList();
 
                 foreach (var player in gamePlayers)
@@ -262,9 +273,9 @@ namespace Dota2Bot.Core.Engine
             }
         }
 
-        private List<long> GetMatchIds(Player player)
+        private async Task<List<long>> GetMatchIds(Player player)
         {
-            var result = steam.GetMatchHistory(player.Id);
+            var result = await steam.GetMatchHistory(player.Id);
             if (result != null)
             {
                 var m = result.matches.TakeWhile(x => x.match_id != player.LastMatchId) //todo where?
@@ -276,13 +287,13 @@ namespace Dota2Bot.Core.Engine
             return new List<long>();
         }
 
-        void UpdateHeroes()
+        async Task UpdateHeroes()
         {
             using var scope = serviceScopeFactory.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
             
             var heroesLocal = dataManager.Heroes.ToDictionary(k => k.Id);
-            var heroesRemote = steam.GetHeroes().heroes.Select(x => new Hero
+            var heroesRemote = (await steam.GetHeroes()).heroes.Select(x => new Hero
             {
                 Id = x.id,
                 Name = x.localized_name

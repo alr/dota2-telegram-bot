@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Dota2Bot.Core.Domain;
 using Dota2Bot.Core.Engine;
 using Humanizer;
+using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
 namespace Dota2Bot.Core.Bot.Commands

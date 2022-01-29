@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Engine;
+using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
 namespace Dota2Bot.Core.Bot.Commands

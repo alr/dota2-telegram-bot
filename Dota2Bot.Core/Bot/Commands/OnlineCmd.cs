@@ -8,6 +8,7 @@ using Dota2Bot.Core.Extensions;
 using Dota2Bot.Core.SteamApi;
 using Dota2Bot.Core.SteamApi.Models;
 using Dota2Bot.Domain.Entity;
+using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
 namespace Dota2Bot.Core.Bot.Commands
@@ -22,7 +23,7 @@ namespace Dota2Bot.Core.Bot.Commands
             var players = DataManager.ChatGetPlayers(chatId);
             var steamIds = players.Select(x => x.SteamId).ToList();
             
-            var summaries = SteamClient.GetPlayerSummaries(steamIds);
+            var summaries = await SteamClient.GetPlayerSummaries(steamIds);
 
             var playersOnlineByGames = summaries
                 .Where(x => x.gameid != null)

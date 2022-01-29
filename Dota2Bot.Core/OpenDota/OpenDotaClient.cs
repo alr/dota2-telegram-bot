@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Dota2Bot.Core.Extensions;
 using Dota2Bot.Core.OpenDota.Models;
 using Microsoft.Extensions.Configuration;
+using Nito.AsyncEx;
 using RestSharp;
 
 namespace Dota2Bot.Core.OpenDota
 {
     public class OpenDotaClient
     {
-        public string BaseUrl = "https://api.opendota.com/api/";
+        private const string BaseUrl = "https://api.opendota.com/api/";
 
         private const int RETRY_COUNT = 60;
         private const int RETRY_DELAY = 3000;
@@ -20,32 +22,39 @@ namespace Dota2Bot.Core.OpenDota
         private const int REQUESTS_DELAY = 1000;
         private DateTime lastRequestTime = DateTime.UtcNow.Date;
 
-        private readonly object syncLock = new object();
+        private readonly AsyncLock syncLock = new AsyncLock();
+        
+        private readonly RestClient client;
 
-        public List<Hero> Heroes()
+        public OpenDotaClient()
+        {
+            client = new RestClient(BaseUrl);
+        }
+
+        public async Task<List<Hero>> Heroes()
         {
             RestRequest request = new RestRequest("heroes");
 
-            return Execute<List<Hero>>(request) ?? new List<Hero>();
+            return await Execute<List<Hero>>(request) ?? new List<Hero>();
         }
 
-        public Player Player(long id)
+        public async Task<Player> Player(long id)
         {
             RestRequest request = new RestRequest("players/{id}");
             request.AddParameter("id", id, ParameterType.UrlSegment);
 
-            return Execute<Player>(request);
+            return await Execute<Player>(request);
         }
 
-        public WinLose WinLose(long id)
+        public async Task<WinLose> WinLose(long id)
         {
             RestRequest request = new RestRequest("players/{id}/wl");
             request.AddParameter("id", id, ParameterType.UrlSegment);
 
-            return Execute<WinLose>(request);
+            return await Execute<WinLose>(request);
         }
 
-        public List<Match> Matches(long id, int? limit = null, int? offset = null)
+        public async Task<List<Match>> Matches(long id, int? limit = null, int? offset = null)
         {
             RestRequest request = new RestRequest("players/{id}/matches");
             request.AddParameter("id", id, ParameterType.UrlSegment);
@@ -62,36 +71,34 @@ namespace Dota2Bot.Core.OpenDota
             if (offset != null)
                 request.AddParameter("offset", offset, ParameterType.QueryString);
 
-            return Execute<List<Match>>(request) ?? new List<Match>();
+            return (await Execute<List<Match>>(request)) ?? new List<Match>();
         }
 
-        public List<Rating> Ratings(long id)
+        public async Task<List<Rating>> Ratings(long id)
         {
             RestRequest request = new RestRequest("players/{id}/ratings");
             request.AddParameter("id", id, ParameterType.UrlSegment);
 
-            return Execute<List<Rating>>(request) ?? new List<Rating>();
+            return (await Execute<List<Rating>>(request)) ?? new List<Rating>();
         }
 
-        public int? Refresh(long id)
+        public async Task<int?> Refresh(long id)
         {
-            RestRequest request = new RestRequest("players/{id}/refresh", Method.POST);
+            RestRequest request = new RestRequest("players/{id}/refresh", Method.Post);
             request.AddParameter("id", id, ParameterType.UrlSegment);
 
-            return Execute<Refresh>(request)?.length;
+            return (await Execute<Refresh>(request))?.length;
         }
 
-        private T Execute<T>(RestRequest request) where T : class, new()
+        private async Task<T> Execute<T>(RestRequest request) where T : class, new()
         {
-            lock (syncLock)
+            using (await syncLock.LockAsync())
             {
                 // задержка между запросами
                 if ((DateTime.UtcNow - lastRequestTime).TotalMilliseconds < REQUESTS_DELAY)
-                    Thread.Sleep(REQUESTS_DELAY);
+                    Thread.Sleep(REQUESTS_DELAY);                
 
-                RestClient client = new RestClient(BaseUrl);
-
-                var response = client.Execute<T>(request, RETRY_COUNT, RETRY_DELAY);
+                var response = await client.Execute<T>(request, RETRY_COUNT, RETRY_DELAY);
 
                 // задержка между запросами
                 lastRequestTime = DateTime.UtcNow;

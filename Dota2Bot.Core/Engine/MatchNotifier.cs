@@ -9,7 +9,6 @@ using Dota2Bot.Core.Extensions;
 using Dota2Bot.Domain.Entity;
 using Humanizer;
 using Humanizer.Localisation;
-using log4net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

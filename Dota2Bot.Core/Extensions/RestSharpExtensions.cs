@@ -4,18 +4,19 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using RestSharp;
 
 namespace Dota2Bot.Core.Extensions
 {
     public static class RestSharpExtensions
     {
-        public static IRestRequest AddQueryParameter(this IRestRequest request, string name, double value)
+        public static RestRequest AddQueryParameter(this RestRequest request, string name, double value)
         {
             return request.AddQueryParameter(name, value.ToString(CultureInfo.InvariantCulture));
         }
 
-        public static bool EnsureSuccessStatusCode(this IRestResponse response)
+        public static bool EnsureSuccessStatusCode(this RestResponse response)
         {
             if (response.StatusCode == HttpStatusCode.OK ||
                 response.StatusCode == HttpStatusCode.Created ||
@@ -28,10 +29,10 @@ namespace Dota2Bot.Core.Extensions
             return false;
         }
 
-        public static IRestResponse<T> Execute<T>(this IRestClient client, IRestRequest request, int rertyCount, int retryDelay)
+        public static async Task<RestResponse<T>> Execute<T>(this RestClient client, RestRequest request, int rertyCount, int retryDelay)
             where T : class, new()
         {
-            IRestResponse<T> response = null;
+            RestResponse<T> response = null;
 
             for (int i = 0; i < rertyCount; i++)
             {
@@ -42,7 +43,7 @@ namespace Dota2Bot.Core.Extensions
                     Thread.Sleep(retryDelay);
                 }
 
-                response = client.Execute<T>(request);
+                response = await client.ExecuteAsync<T>(request);
 
                 // проверяем необходим ли повтор запроса
                 if (!ShouldRetryRequest(client, request, response))
@@ -57,9 +58,9 @@ namespace Dota2Bot.Core.Extensions
             return response;
         }
 
-        public static IRestResponse Execute(this IRestClient client, IRestRequest request, int rertyCount, int retryDelay)
+        public static async Task<RestResponse> Execute(this RestClient client, RestRequest request, int rertyCount, int retryDelay)
         {
-            IRestResponse response = null;
+            RestResponse response = null;
 
             for (int i = 0; i < rertyCount; i++)
             {
@@ -70,7 +71,7 @@ namespace Dota2Bot.Core.Extensions
                     Thread.Sleep(retryDelay);
                 }
 
-                response = client.Execute(request);
+                response = await client.ExecuteAsync(request);
 
                 // проверяем необходим ли повтор запроса
                 if (!ShouldRetryRequest(client, request, response))
@@ -85,7 +86,7 @@ namespace Dota2Bot.Core.Extensions
             return response;
         }
 
-        private static bool ShouldRetryRequest(IRestClient client, IRestRequest request, IRestResponse response)
+        private static bool ShouldRetryRequest(RestClient client, RestRequest request, RestResponse response)
         {
             // сетевая ошибка
             if (response.ErrorException != null)
@@ -102,7 +103,7 @@ namespace Dota2Bot.Core.Extensions
             return false;
         }
 
-        private static void HandleResponse(IRestClient client, IRestRequest request, IRestResponse response)
+        private static void HandleResponse(RestClient client, RestRequest request, RestResponse response)
         {
             if (!EnsureSuccessStatusCode(response))
             {

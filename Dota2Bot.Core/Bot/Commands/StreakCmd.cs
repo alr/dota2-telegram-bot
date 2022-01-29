@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Domain;
 using Dota2Bot.Core.Engine;
+using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
 namespace Dota2Bot.Core.Bot.Commands
@@ -16,10 +17,10 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            const int max = 20; // max game streak
-            const int min = 3; // min game streak
+            const int Max = 20; // max game streak
+            const int Min = 3; // min game streak
             
-            var mathesData = DataManager.ChatGetMatches(chatId, max, x => x.Player)
+            var mathesData = DataManager.ChatGetMatches(chatId, Max, x => x.Player)
                 .GroupBy(x => x.PlayerId)
                 .Select(x => new
                 {
@@ -45,7 +46,7 @@ namespace Dota2Bot.Core.Bot.Commands
                     GameResult = lastMatch.GameResult(),
                     Count = streakCount,
                 })
-                .Where(x => x.Count >= min)
+                .Where(x => x.Count >= Min)
                 .OrderByDescending(x => x.Count)
                 .ToList();
 

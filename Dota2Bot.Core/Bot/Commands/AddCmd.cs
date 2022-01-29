@@ -7,6 +7,7 @@ using Dota2Bot.Core.Domain;
 using Dota2Bot.Core.Engine;
 using Dota2Bot.Core.OpenDota;
 using Dota2Bot.Domain.Entity;
+using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
 namespace Dota2Bot.Core.Bot.Commands
@@ -36,7 +37,7 @@ namespace Dota2Bot.Core.Bot.Commands
             var player = DataManager.PlayerGet(playerId);
             if (player == null)
             {
-                player = CollectPlayerData(DataManager, OpenDota, playerId);
+                player = await CollectPlayerData(DataManager, OpenDota, playerId);
                 if (player == null)
                 {
                     await Telegram.SendTextMessageAsync(chatId, "Player not found");
@@ -56,9 +57,9 @@ namespace Dota2Bot.Core.Bot.Commands
             await Telegram.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
         }
 
-        private Player CollectPlayerData(DataManager dataManager, OpenDotaClient openDota, long playerId)
+        private async Task<Player> CollectPlayerData(DataManager dataManager, OpenDotaClient openDota, long playerId)
         {
-            var info = openDota.Player(playerId);
+            var info = await openDota.Player(playerId);
             if (info == null) 
                 return null;
 
@@ -74,7 +75,7 @@ namespace Dota2Bot.Core.Bot.Commands
             player.RankTier = info.rank_tier;
 
             // матчи
-            var matches = GetMatches(openDota, player);
+            var matches = await GetMatches(openDota, player);
             if (matches.Count > 0)
             {
                 dataManager.Matches.AddRange(matches);
@@ -89,7 +90,7 @@ namespace Dota2Bot.Core.Bot.Commands
             player.LoseCount = matches.Count(x => !x.Won);
 
             // рейтинги
-            var ratings = GetRatings(openDota, player);
+            var ratings = await GetRatings(openDota, player);
             if (ratings.Count > 0)
             {
                 dataManager.Ratings.AddRange(ratings);
@@ -100,13 +101,13 @@ namespace Dota2Bot.Core.Bot.Commands
             return player;
         }
 
-        private List<Match> GetMatches(OpenDotaClient openDota, Player player)
+        private async Task<List<Match>> GetMatches(OpenDotaClient openDota, Player player)
         {
-            const int collectLimit = 10;
+            const int CollectLimit = 10;
 
-            var limit = player.LastMatchId == null ? null : (int?) collectLimit;
+            var limit = player.LastMatchId == null ? null : (int?) CollectLimit;
 
-            var matches = openDota.Matches(player.Id, limit: limit)
+            var matches = (await openDota.Matches(player.Id, limit: limit))
                 .TakeWhile(x => x.match_id != player.LastMatchId) //todo where?
                 .ToList();
 
@@ -128,11 +129,11 @@ namespace Dota2Bot.Core.Bot.Commands
             }).ToList();
         }
 
-        private List<Rating> GetRatings(OpenDotaClient openDota, Player player)
+        private async Task<List<Rating>> GetRatings(OpenDotaClient openDota, Player player)
         {
             var lastRatingDate = player.LastRatingDate ?? DateTime.MinValue;
 
-            var ratings = openDota.Ratings(player.Id)
+            var ratings = (await openDota.Ratings(player.Id))
                 .Where(x => x.time > lastRatingDate)
                 .ToList();
 

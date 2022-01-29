@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -37,10 +37,10 @@ namespace Dota2Bot.WorkerService
                 
                 await dota2DbContext.Database.MigrateAsync(cancellationToken: stoppingToken);
 
-                steamAppsCache.Init();
+                await steamAppsCache.Init();
                     
-                botEngine.Start(stoppingToken);
-                grabber.Start(stoppingToken);
+                await botEngine.Start();
+                await grabber.Start();
                     
                 await Task.Delay(Timeout.Infinite, stoppingToken);
             }
