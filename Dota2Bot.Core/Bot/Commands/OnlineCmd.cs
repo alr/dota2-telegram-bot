@@ -20,7 +20,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            var players = DataManager.ChatGetPlayers(chatId);
+            var players = await DataManager.ChatGetPlayers(chatId);
             var steamIds = players.Select(x => x.SteamId).ToList();
             
             var summaries = await SteamClient.GetPlayerSummaries(steamIds);

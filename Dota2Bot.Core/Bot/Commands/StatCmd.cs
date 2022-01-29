@@ -19,7 +19,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            var players = DataManager.ChatGetPlayers(chatId)
+            var players = (await DataManager.ChatGetPlayers(chatId))
                     .OrderByDescending(x => x.WinRate()).ToList();
 
             if (int.TryParse(args, out var days))

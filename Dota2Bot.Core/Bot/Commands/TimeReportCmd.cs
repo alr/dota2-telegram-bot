@@ -15,13 +15,13 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            var chat = DataManager.ChatGet(chatId);
+            var chat =  await DataManager.ChatGet(chatId);
             if (chat == null)
                 return;
             
             var dateStart = GetDateStart(chat.Timezone);
 
-            var report = DataManager.WeeklyReport(chatId, dateStart);
+            var report = await DataManager.WeeklyReport(chatId, dateStart);
             if (report == null)
             {
                 await Telegram.SendTextMessageAsync(chatId, "No one played :(");

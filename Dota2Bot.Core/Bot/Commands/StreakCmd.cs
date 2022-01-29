@@ -20,7 +20,7 @@ namespace Dota2Bot.Core.Bot.Commands
             const int Max = 20; // max game streak
             const int Min = 3; // min game streak
             
-            var mathesData = DataManager.ChatGetMatches(chatId, Max, x => x.Player)
+            var mathesData = (await DataManager.ChatGetMatches(chatId, Max, x => x.Player))
                 .GroupBy(x => x.PlayerId)
                 .Select(x => new
                 {

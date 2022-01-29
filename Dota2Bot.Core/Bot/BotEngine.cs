@@ -58,11 +58,8 @@ namespace Dota2Bot.Core.Bot
 
         private async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            if (exception is ApiRequestException apiRequestException)
-            {
-                //await botClient.SendTextMessageAsync(123, apiRequestException.ToString());
-                await Task.CompletedTask;
-            }
+            logger.LogError(exception, "Telegram Error");
+            await Task.CompletedTask;
         }
 
         private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)

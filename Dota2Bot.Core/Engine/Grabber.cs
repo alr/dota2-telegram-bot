@@ -119,7 +119,7 @@ namespace Dota2Bot.Core.Engine
                     player.PartyRank = info.competitive_rank;
                     player.RankTier = info.rank_tier;
 
-                    dataManager.SaveChanges();
+                    await dataManager.SaveChangesAsync();
                 }                   
             }
         }
@@ -200,7 +200,7 @@ namespace Dota2Bot.Core.Engine
                 }
 
                 dataManager.Matches.AddRange(matches);
-                dataManager.SaveChanges();
+                await dataManager.SaveChangesAsync();
 
                 //send to telegram
                 var matchIds = matches.Select(x => x.MatchId).Distinct().ToList();
@@ -316,7 +316,7 @@ namespace Dota2Bot.Core.Engine
                 }
             }
 
-            dataManager.SaveChanges();
+            await dataManager.SaveChangesAsync();
 
             CacheHeroes();
         }

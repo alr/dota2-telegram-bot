@@ -29,18 +29,18 @@ namespace Dota2Bot.Core.Bot.Commands
                 return;
             }
             
-            var player = DataManager.PlayerGet(playerId);
+            var player = await DataManager.PlayerGet(playerId);
             if (player == null)
             {
                 await Telegram.SendTextMessageAsync(chatId, "Player not found");
                 return;
             }
 
-            var chat = DataManager.ChatGet(chatId, x => x.ChatPlayers);
+            var chat = await DataManager.ChatGet(chatId, x => x.ChatPlayers);
             if (chat != null)
             {
-                DataManager.ChatRemovePlayer(chat, player);
-                DataManager.SaveChanges();
+                await DataManager.ChatRemovePlayer(chat, player);
+                await DataManager.SaveChangesAsync();
             }
 
             await Telegram.SendTextMessageAsync(chatId, $"Player *{player.Name}* successfully removed", parseMode: ParseMode.Markdown);

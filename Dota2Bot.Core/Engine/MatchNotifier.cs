@@ -38,11 +38,11 @@ namespace Dota2Bot.Core.Engine
             using var scope = serviceProvider.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
             
-            var matches = dataManager
+            var matches = (await dataManager
                 .GetMathes(matchIds,
                     x => x.Player,
                     x => x.Player.ChatPlayers,
-                    x => x.Hero)
+                    x => x.Hero))
                 .OrderBy(x => x.DateStart + x.Duration)
                 .ThenBy(x => x.PlayerSlot);
 
@@ -157,8 +157,7 @@ namespace Dota2Bot.Core.Engine
             using var scope = serviceProvider.CreateScope();
             var dataManager = scope.ServiceProvider.GetRequiredService<DataManager>();
                 
-            var chats = dataManager
-                .GetChatPlayers(x => x.Chat, x => x.Player)
+            var chats = (await dataManager.GetChatPlayers(x => x.Chat, x => x.Player))
                 .GroupBy(x => x.Chat)
                 .Select(g => new
                 {
@@ -174,8 +173,7 @@ namespace Dota2Bot.Core.Engine
                     var steamId = long.Parse(session.SteamId);
                     var playerId = SteamId.ConvertTo32(steamId);
 
-                    var games = dataManager
-                        .GetPlayerMatches(playerId, session.Start.Value, session.End.Value)
+                    var games = (await dataManager.GetPlayerMatches(playerId, session.Start.Value, session.End.Value))
                         .Select(x => new { x.Won })
                         .ToList();
 

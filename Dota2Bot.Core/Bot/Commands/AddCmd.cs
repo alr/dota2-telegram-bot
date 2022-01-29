@@ -34,7 +34,7 @@ namespace Dota2Bot.Core.Bot.Commands
             
             await Telegram.SendTextMessageAsync(chatId, "Saving... ");
 
-            var player = DataManager.PlayerGet(playerId);
+            var player = await DataManager.PlayerGet(playerId);
             if (player == null)
             {
                 player = await CollectPlayerData(DataManager, OpenDota, playerId);
@@ -45,10 +45,10 @@ namespace Dota2Bot.Core.Bot.Commands
                 }
             }
 
-            var chat = DataManager.ChatGetOrAdd(chatId, x => x.ChatPlayers);
-            var added = DataManager.ChatAddPlayer(chat, player);
+            var chat = await DataManager.ChatGetOrAdd(chatId, x => x.ChatPlayers);
+            var added = await DataManager.ChatAddPlayer(chat, player);
             
-            DataManager.SaveChanges();
+            await DataManager.SaveChangesAsync();
 
             var msg = added
                 ? $"Player *{player.Name}* successfully added"

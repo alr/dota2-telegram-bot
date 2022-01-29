@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading.Tasks;
 using Dota2Bot.Core.Engine.Models.Report;
 using Dota2Bot.Core.Extensions;
 using Dota2Bot.Domain;
@@ -26,22 +27,23 @@ namespace Dota2Bot.Core.Engine
             this.dbContext = dbContext;
         }
 
-        public Player PlayerGet(long playerId)
+        public async Task<Player> PlayerGet(long playerId)
         {
-            return dbContext.Players.FirstOrDefault(x => x.Id == playerId);
+            return await dbContext.Players.FirstOrDefaultAsync(x => x.Id == playerId);
         }
 
-        public TgChat ChatGet(long chatId, params Expression<Func<TgChat, object>>[] includes)
+        public async Task<TgChat> ChatGet(long chatId, params Expression<Func<TgChat, object>>[] includes)
         {
-            return dbContext.Chats.IncludeMultiple(includes).FirstOrDefault(x => x.Id == chatId);
+            return await dbContext.Chats.IncludeMultiple(includes).FirstOrDefaultAsync(x => x.Id == chatId);
         }
 
-        public TgChat ChatGetOrAdd(long chatId, params Expression<Func<TgChat, object>>[] includes)
+        public async Task<TgChat> ChatGetOrAdd(long chatId, params Expression<Func<TgChat, object>>[] includes)
         {
-            var exists = ChatGet(chatId, includes);
+            var exists = await ChatGet(chatId, includes);
             if (exists == null)
             {
-                return dbContext.Chats.Add(new TgChat {Id = chatId}).Entity;
+                var result = await dbContext.Chats.AddAsync(new TgChat {Id = chatId});
+                return result.Entity;
             }
             else
             {
@@ -49,16 +51,16 @@ namespace Dota2Bot.Core.Engine
             }
         }
 
-        public List<Player> ChatGetPlayers(long chatId, params Expression<Func<Player, object>>[] includes)
+        public async Task<List<Player>> ChatGetPlayers(long chatId, params Expression<Func<Player, object>>[] includes)
         {
-            return dbContext.ChatPlayers
+            return await dbContext.ChatPlayers
                 .Where(x => x.ChatId == chatId)
                 .Select(x => x.Player)
                 .IncludeMultiple(includes)
-                .ToList();
+                .ToListAsync();
         }
         
-        public bool ChatAddPlayer(TgChat chat, Player player)
+        public Task<bool> ChatAddPlayer(TgChat chat, Player player)
         {
             var exists = chat.ChatPlayers.Any(x => x.PlayerId == player.Id);
             if (exists == false)
@@ -69,70 +71,70 @@ namespace Dota2Bot.Core.Engine
                 });
             }
 
-            return !exists;
+            return Task.FromResult(!exists);
         }
 
-        public bool ChatRemovePlayer(TgChat chat, Player player)
+        public Task<bool> ChatRemovePlayer(TgChat chat, Player player)
         {
             var chatPlayer = chat.ChatPlayers.FirstOrDefault(x => x.PlayerId == player.Id);
             if (chatPlayer != null)
             {
-                return chat.ChatPlayers.Remove(chatPlayer);
+                return Task.FromResult(chat.ChatPlayers.Remove(chatPlayer));
             }
 
-            return false;
+            return Task.FromResult(false);
         }
 
-        public List<Match> ChatGetMatches(long chatId, int limit, params Expression<Func<Match, object>>[] includes)
+        public async Task<List<Match>> ChatGetMatches(long chatId, int limit, params Expression<Func<Match, object>>[] includes)
         {
-            return dbContext.ChatPlayers
+            return await dbContext.ChatPlayers
                 .Where(x => x.ChatId == chatId)
                 .Select(x => x.Player)
                 .SelectMany(x => x.Matches.OrderByDescending(k => k.MatchId).Take(limit))
                 .IncludeMultiple(includes)
-                .ToList();
+                .ToListAsync();
         }
 
         #region MatchNotifier
 
-        public List<Match> GetMathes(List<long> matchIds, params Expression<Func<Match, object>>[] includes)
+        public async Task<List<Match>> GetMathes(List<long> matchIds, params Expression<Func<Match, object>>[] includes)
         {
-             return dbContext.Matches
+             return await dbContext.Matches
                     .IncludeMultiple(includes)
                     .Where(x => matchIds.Contains(x.MatchId))
-                    .ToList();
+                    .ToListAsync();
         }
 
-        public List<TgChatPlayers> GetChatPlayers(params Expression<Func<TgChatPlayers, object>>[] includes)
+        public async Task<List<TgChatPlayers>> GetChatPlayers(params Expression<Func<TgChatPlayers, object>>[] includes)
         {
-            return dbContext.ChatPlayers
+            return await dbContext.ChatPlayers
                 .IncludeMultiple(includes)
-                .ToList();
+                .ToListAsync();
         }
 
-        public List<Match> GetPlayerMatches(long playerId, DateTime dateStartFrom, DateTime dateStartTo)
+        public async Task<List<Match>> GetPlayerMatches(long playerId, DateTime dateStartFrom, DateTime dateStartTo)
         {
-            return dbContext.Matches
+            return await dbContext.Matches
                 .Where(x => x.PlayerId == playerId
                         && x.DateStart >= dateStartFrom
                         && x.DateStart <= dateStartTo)
-                .ToList();
+                .ToListAsync();
         }
 
         #endregion
 
         #region Reports
 
-        public WeeklyReport WeeklyReport(long chatId, DateTime dateStart)
+        public async Task<WeeklyReport> WeeklyReport(long chatId, DateTime dateStart)
         {
             var mathesQeury = dbContext.ChatPlayers
                 .Where(x => x.ChatId == chatId)
                 .Select(x => x.Player)
                 .SelectMany(x => x.Matches.Where(k => k.DateStart >= dateStart));
 
-            var stats = mathesQeury
+            var stats = (await mathesQeury
                 .Include(x => x.Player)
-                .ToList()
+                .ToListAsync())
                 .GroupBy(x => x.PlayerId)
                 .Select(g => new WeeklyPlayerModel
                 {
@@ -158,7 +160,7 @@ namespace Dota2Bot.Core.Engine
                 return null;
             }
 
-            var total = mathesQeury.ToList()
+            var total = (await mathesQeury.ToListAsync())
                 .GroupBy(x => x.MatchId)
                 .Select(g => new
                 {
@@ -182,9 +184,9 @@ namespace Dota2Bot.Core.Engine
 
         #endregion
 
-        public int SaveChanges()
+        public async Task<int> SaveChangesAsync()
         {
-            return dbContext.SaveChanges();
+            return await dbContext.SaveChangesAsync();
         }
     }
 }
