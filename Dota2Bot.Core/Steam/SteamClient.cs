@@ -8,6 +8,7 @@ using Dota2Bot.Core.SteamApi.Models;
 using Microsoft.Extensions.Configuration;
 using Nito.AsyncEx;
 using RestSharp;
+using RestSharp.Serializers.NewtonsoftJson;
 
 namespace Dota2Bot.Core.SteamApi
 {
@@ -34,6 +35,7 @@ public class SteamClient
             this.apiKey = apiKey;
 
             client = new RestClient(BaseUrl);
+            client.UseNewtonsoftJson();
         }
 
         public async Task<List<PlayerSummariesResponse.Player>> GetPlayerSummaries(List<string> steamIds)

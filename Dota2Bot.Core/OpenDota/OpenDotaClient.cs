@@ -9,6 +9,7 @@ using Dota2Bot.Core.OpenDota.Models;
 using Microsoft.Extensions.Configuration;
 using Nito.AsyncEx;
 using RestSharp;
+using RestSharp.Serializers.NewtonsoftJson;
 
 namespace Dota2Bot.Core.OpenDota
 {
@@ -29,6 +30,7 @@ namespace Dota2Bot.Core.OpenDota
         public OpenDotaClient()
         {
             client = new RestClient(BaseUrl);
+            client.UseNewtonsoftJson();
         }
 
         public async Task<List<Hero>> Heroes()
