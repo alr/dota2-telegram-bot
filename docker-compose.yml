@@ -11,7 +11,7 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
 
   dota2bot.service:
-    image: alr1wn0/dota2-telegram-bot:2.0
+    image: alr1wn0/dota2-telegram-bot:latest
     restart: always
     environment:
       DB: Server=db;Port=5432;Database=dotastat;User Id=postgres;Password=dotabot;
