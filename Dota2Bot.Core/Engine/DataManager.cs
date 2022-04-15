@@ -134,6 +134,28 @@ namespace Dota2Bot.Core.Engine
 
         #region Reports
 
+        public async Task<WeeklyReport> LastReport(long chatId, int count, Hero hero)
+        {
+            var data = (await dbContext.ChatPlayers
+                .Where(x => x.ChatId == chatId)
+                .Select(x => x.Player)
+                .GroupBy(x => x.Id)
+                .Select(g => new
+                {
+                    Player = g.First(),
+                    Games = g.SelectMany(k => k.Matches)
+                             .Where(k => hero == null || k.HeroId == hero.Id)
+                             .OrderByDescending(k => k.DateStart)
+                             .Take(count)
+                             .ToList()
+                }).ToListAsync())
+                .Where(x => x.Games.Count == count)
+                .SelectMany(x => x.Games)
+                .ToList();
+
+            return WeeklyReport(data, hero);
+        }
+
         public async Task<WeeklyReport> WeeklyReport(long chatId, DateTime dateStart, Hero hero)
         {
             var mathesQeury = dbContext.ChatPlayers
@@ -146,15 +168,22 @@ namespace Dota2Bot.Core.Engine
                 mathesQeury = mathesQeury.Where(x => x.HeroId == hero.Id);
             }
 
-            var stats = (await mathesQeury
+            var data = await mathesQeury
                 .Include(x => x.Player)
-                .ToListAsync())
+                .ToListAsync();
+
+            return WeeklyReport(data, hero);
+        }
+
+        private WeeklyReport WeeklyReport(List<Match> data, Hero hero)
+        {
+            var stats = data
                 .GroupBy(x => x.PlayerId)
                 .Select(g => new WeeklyPlayerModel
                 {
                     PlayerId = g.Key,
                     Name = g.Max(x => x.Player.Name),
-                    KillsAvg = (int) Math.Round(g.Average(x => x.Kills)),
+                    KillsAvg = (int)Math.Round(g.Average(x => x.Kills)),
                     KillsMax = g.Max(x => x.Kills),
                     Matches = g.Count(),
                     WinRate = g.Count() >= 1 ? g.Count(x => x.Won) * 100.0 / g.Count() : -1,
@@ -174,7 +203,7 @@ namespace Dota2Bot.Core.Engine
                 return null;
             }
 
-            var total = (await mathesQeury.ToListAsync())
+            var total = data
                 .GroupBy(x => x.MatchId)
                 .Select(g => new
                 {
@@ -184,12 +213,13 @@ namespace Dota2Bot.Core.Engine
 
             WeeklyReport viewModel = new WeeklyReport
             {
+                Hero = hero,
                 Players = stats,
                 Overall = new WeeklyOverall
                 {
                     Total = total.Count,
                     Wins = total.Count(x => x.Won),
-                    WinRate = total.Count >= 3 ? total.Count(x => x.Won)*100.0/total.Count : -1
+                    WinRate = total.Count >= 3 ? total.Count(x => x.Won) * 100.0 / total.Count : -1
                 }
             };
 

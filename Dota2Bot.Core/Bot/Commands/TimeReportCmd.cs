@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Engine;
+using Dota2Bot.Core.Engine.Models.Report;
 using Dota2Bot.Core.Extensions;
 using Dota2Bot.Domain.Entity;
 using FluentResults;
@@ -25,8 +26,8 @@ namespace Dota2Bot.Core.Bot.Commands
                 return;
             
             var dateStart = GetDateStart(chat.Timezone);
-            var heroResult = await GetHero(args);
             
+            var heroResult = await GetHero(args);            
             if (heroResult.IsFailed)
             {
                 await Telegram.SendTextMessageAsync(chatId, heroResult.Errors.First().Message);
@@ -34,17 +35,28 @@ namespace Dota2Bot.Core.Bot.Commands
             }
 
             var report = await DataManager.WeeklyReport(chatId, dateStart, heroResult.Value);
+            
+            await PrintReport(chatId, report);
+        }
+
+        protected async Task PrintReport(long chatId, WeeklyReport report)
+        {            
             if (report == null)
             {
                 await Telegram.SendTextMessageAsync(chatId, "No one played :(");
                 return;
             }
 
-            string msg = "*#* | " +
-                         "*Nick* | " +
-                         "*WinRate* | " +
-                         //"*KD* |" +
-                         "*Time*\r\n";
+            string msg = "";
+
+            if (report.Hero != null)
+                msg += $"*Hero:* {report.Hero.Name.Markdown()}\r\n";
+
+            msg += "*#* | " +
+                   "*Nick* | " +
+                   "*WinRate* | " +
+                   //"*KD* |" +
+                   "*Time*\r\n";
 
             for (int i = 0; i < report.Players.Count; i++)
             {
@@ -64,8 +76,8 @@ namespace Dota2Bot.Core.Bot.Commands
 
             await Telegram.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
         }
-
-        private async Task<Result<Hero>> GetHero(string args)
+        
+        protected async Task<Result<Hero>> GetHero(string args)
         {
             var heroName = ParseHeroName(args);
             
@@ -188,4 +200,50 @@ namespace Dota2Bot.Core.Bot.Commands
             return heroName;
         }
     }
+
+    public class LastCmd : BaseTimeReportCmd
+    {
+        public override string Cmd => "last";
+        public override string Description => "stats for N last matches";
+
+        protected override async Task ExecuteHandler(long chatId, string args)
+        {
+            var components = args.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            var countStr = components[0];
+
+            if (!int.TryParse(countStr, out int count) || count <= 0)
+            {
+                await Telegram.SendTextMessageAsync(chatId, "Wrong days number");
+                return;
+            }
+
+            var heroName = components.Length > 1 ? components[1] : null;
+
+            var chat = await DataManager.ChatGet(chatId);
+            if (chat == null)
+                return;
+
+            var heroResult = await GetHero(heroName);
+            if (heroResult.IsFailed)
+            {
+                await Telegram.SendTextMessageAsync(chatId, heroResult.Errors.First().Message);
+                return;
+            }
+
+            var report = await DataManager.LastReport(chatId, count, heroResult.Value);
+
+            await PrintReport(chatId, report);
+        }
+
+        protected override DateTime GetDateStart(string timezone)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override string ParseHeroName(string args)
+        {
+            return args;                
+        }
+    }
+
 }
