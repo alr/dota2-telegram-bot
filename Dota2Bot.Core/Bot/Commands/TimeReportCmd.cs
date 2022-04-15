@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Dota2Bot.Core.Engine;
 using Dota2Bot.Core.Extensions;
+using Dota2Bot.Domain.Entity;
+using FluentResults;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 
@@ -13,6 +16,8 @@ namespace Dota2Bot.Core.Bot.Commands
     {
         protected abstract DateTime GetDateStart(string timezone);
 
+        protected abstract string ParseHeroName(string args);
+        
         protected override async Task ExecuteHandler(long chatId, string args)
         {
             var chat =  await DataManager.ChatGet(chatId);
@@ -20,8 +25,15 @@ namespace Dota2Bot.Core.Bot.Commands
                 return;
             
             var dateStart = GetDateStart(chat.Timezone);
+            var heroResult = await GetHero(args);
+            
+            if (heroResult.IsFailed)
+            {
+                await Telegram.SendTextMessageAsync(chatId, heroResult.Errors.First().Message);
+                return;
+            }
 
-            var report = await DataManager.WeeklyReport(chatId, dateStart);
+            var report = await DataManager.WeeklyReport(chatId, dateStart, heroResult.Value);
             if (report == null)
             {
                 await Telegram.SendTextMessageAsync(chatId, "No one played :(");
@@ -52,6 +64,25 @@ namespace Dota2Bot.Core.Bot.Commands
 
             await Telegram.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
         }
+
+        private async Task<Result<Hero>> GetHero(string args)
+        {
+            var heroName = ParseHeroName(args);
+            
+            if (string.IsNullOrEmpty(heroName))
+                return Result.Ok<Hero>(null);
+
+            var heros = await DataManager.FindHerosByName(heroName);
+            
+            if (heros == null)
+                return Result.Fail<Hero>("Hero not found");
+
+            if (heros.Count > 1)
+                return Result.Fail<Hero>("Multiple heroes found:" +
+                    "\r\n - " + string.Join("\r\n - ", heros.Select(x => x.Name)));
+
+            return Result.Ok(heros.Single());
+        }
     }
 
     public class TodayCmd : BaseTimeReportCmd
@@ -63,6 +94,11 @@ namespace Dota2Bot.Core.Bot.Commands
         {
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).Date;
             return local.ConvertFromTimezone(timezone);
+        }
+
+        protected override string ParseHeroName(string args)
+        {
+            return args;
         }
     }
 
@@ -76,6 +112,11 @@ namespace Dota2Bot.Core.Bot.Commands
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).StartOfWeek(DayOfWeek.Monday);
             return local.ConvertFromTimezone(timezone);
         }
+
+        protected override string ParseHeroName(string args)
+        {
+            return args;
+        }
     }
 
     public class MonthCmd : BaseTimeReportCmd
@@ -87,6 +128,11 @@ namespace Dota2Bot.Core.Bot.Commands
         {
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).StartOfMonth();
             return local.ConvertFromTimezone(timezone);
+        }
+
+        protected override string ParseHeroName(string args)
+        {
+            return args;
         }
     }
 
@@ -100,6 +146,11 @@ namespace Dota2Bot.Core.Bot.Commands
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).StartOfYear();
             return local.ConvertFromTimezone(timezone);
         }
+        
+        protected override string ParseHeroName(string args)
+        {
+            return args;
+        }
     }
 
     public class DaysCmd : BaseTimeReportCmd
@@ -108,14 +159,20 @@ namespace Dota2Bot.Core.Bot.Commands
         public override string Description => "stats for N last days";
 
         private int days;
+        private string heroName;
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            if (!int.TryParse(args, out days) || days <= 0)
+            var components = args.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            var daysStr = components[0];           
+
+            if (!int.TryParse(daysStr, out days) || days <= 0)
             {
                 await Telegram.SendTextMessageAsync(chatId, "Wrong days number");
                 return;
             }
+
+            heroName = components.Length > 1 ? components[1] : null;
 
             await base.ExecuteHandler(chatId, args);
         }
@@ -124,6 +181,11 @@ namespace Dota2Bot.Core.Bot.Commands
         {
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).Date.AddDays(-days);
             return local.ConvertFromTimezone(timezone);
+        }
+
+        protected override string ParseHeroName(string args)
+        {
+            return heroName;
         }
     }
 }

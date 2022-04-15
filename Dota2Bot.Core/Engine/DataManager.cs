@@ -121,16 +121,30 @@ namespace Dota2Bot.Core.Engine
                 .ToListAsync();
         }
 
+        public async Task<List<Hero>> FindHerosByName(string name)
+        {
+            var lowerName = name.ToLower();
+            
+            return await dbContext.Heroes
+                .Where(x => x.Name.ToLower().Contains(lowerName))
+                .ToListAsync();
+        }
+
         #endregion
 
         #region Reports
 
-        public async Task<WeeklyReport> WeeklyReport(long chatId, DateTime dateStart)
+        public async Task<WeeklyReport> WeeklyReport(long chatId, DateTime dateStart, Hero hero)
         {
             var mathesQeury = dbContext.ChatPlayers
                 .Where(x => x.ChatId == chatId)
                 .Select(x => x.Player)
                 .SelectMany(x => x.Matches.Where(k => k.DateStart >= dateStart));
+
+            if (hero != null)
+            {
+                mathesQeury = mathesQeury.Where(x => x.HeroId == hero.Id);
+            }
 
             var stats = (await mathesQeury
                 .Include(x => x.Player)
