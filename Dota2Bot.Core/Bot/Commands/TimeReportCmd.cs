@@ -18,16 +18,16 @@ namespace Dota2Bot.Core.Bot.Commands
         protected abstract DateTime GetDateStart(string timezone);
 
         protected abstract string ParseHeroName(string args);
-        
+
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            var chat =  await DataManager.ChatGet(chatId);
+            var chat = await DataManager.ChatGet(chatId);
             if (chat == null)
                 return;
-            
+
             var dateStart = GetDateStart(chat.Timezone);
-            
-            var heroResult = await GetHero(args);            
+
+            var heroResult = await GetHero(args);
             if (heroResult.IsFailed)
             {
                 await Telegram.SendTextMessageAsync(chatId, heroResult.Errors.First().Message);
@@ -35,12 +35,12 @@ namespace Dota2Bot.Core.Bot.Commands
             }
 
             var report = await DataManager.WeeklyReport(chatId, dateStart, heroResult.Value);
-            
+
             await PrintReport(chatId, report);
         }
 
         protected async Task PrintReport(long chatId, WeeklyReport report)
-        {            
+        {
             if (report == null)
             {
                 await Telegram.SendTextMessageAsync(chatId, "No one played :(");
@@ -76,16 +76,16 @@ namespace Dota2Bot.Core.Bot.Commands
 
             await Telegram.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
         }
-        
+
         protected async Task<Result<Hero>> GetHero(string args)
         {
             var heroName = ParseHeroName(args);
-            
+
             if (string.IsNullOrEmpty(heroName))
                 return Result.Ok<Hero>(null);
 
             var heros = await DataManager.FindHerosByName(heroName);
-            
+
             if (heros == null)
                 return Result.Fail<Hero>("Hero not found");
 
@@ -101,7 +101,7 @@ namespace Dota2Bot.Core.Bot.Commands
     {
         public override string Cmd => "today";
         public override string Description => "today stats";
-        
+
         protected override DateTime GetDateStart(string timezone)
         {
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).Date;
@@ -158,7 +158,7 @@ namespace Dota2Bot.Core.Bot.Commands
             var local = DateTime.UtcNow.ConvertToTimezone(timezone).StartOfYear();
             return local.ConvertFromTimezone(timezone);
         }
-        
+
         protected override string ParseHeroName(string args)
         {
             return args;
@@ -176,7 +176,7 @@ namespace Dota2Bot.Core.Bot.Commands
         protected override async Task ExecuteHandler(long chatId, string args)
         {
             var components = args.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            var daysStr = components[0];           
+            var daysStr = components[0];
 
             if (!int.TryParse(daysStr, out days) || days <= 0)
             {
@@ -242,7 +242,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override string ParseHeroName(string args)
         {
-            return args;                
+            return args;
         }
     }
 
