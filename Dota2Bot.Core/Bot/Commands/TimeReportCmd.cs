@@ -86,7 +86,7 @@ namespace Dota2Bot.Core.Bot.Commands
 
             var heros = await DataManager.FindHerosByName(heroName);
 
-            if (heros == null)
+            if (heros.Count == 0)
                 return Result.Fail<Hero>("Hero not found");
 
             if (heros.Count > 1)
