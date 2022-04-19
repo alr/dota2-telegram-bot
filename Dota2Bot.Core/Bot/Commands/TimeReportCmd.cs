@@ -175,7 +175,13 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
-            var components = args.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+            if (string.IsNullOrEmpty(args))
+            {
+                await Telegram.SendTextMessageAsync(chatId, "Please specify number of days");
+                return;
+            }
+
+            var components = args.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);            
             var daysStr = components[0];
 
             if (!int.TryParse(daysStr, out days) || days <= 0)
@@ -208,12 +214,18 @@ namespace Dota2Bot.Core.Bot.Commands
 
         protected override async Task ExecuteHandler(long chatId, string args)
         {
+            if (string.IsNullOrEmpty(args))
+            {
+                await Telegram.SendTextMessageAsync(chatId, "Please specify number of matches");
+                return;
+            }
+
             var components = args.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
             var countStr = components[0];
 
             if (!int.TryParse(countStr, out int count) || count <= 0)
             {
-                await Telegram.SendTextMessageAsync(chatId, "Wrong days number");
+                await Telegram.SendTextMessageAsync(chatId, "Wrong matches number");
                 return;
             }
 
