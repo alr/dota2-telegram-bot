@@ -37,7 +37,12 @@ namespace Dota2Bot.Core.Bot
 
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = new [] { UpdateType.Message, UpdateType.EditedMessage }
+                AllowedUpdates = new []
+                {
+                    UpdateType.Message, 
+                    UpdateType.EditedMessage,
+                    UpdateType.CallbackQuery
+                }
             };
 
             telegram.StartReceiving(
@@ -66,6 +71,7 @@ namespace Dota2Bot.Core.Bot
             {
                 { Message: { } message } => BotOnMessageReceived(message, cancellationToken),
                 { EditedMessage: { } message } => BotOnMessageReceived(message, cancellationToken),
+                { CallbackQuery: { } callbackQuery } => BotOnCallbackQueryReceived(callbackQuery, cancellationToken),
             };
 
             await handler;
@@ -73,9 +79,27 @@ namespace Dota2Bot.Core.Bot
 
         private async Task BotOnMessageReceived(Message message, CancellationToken cancellationToken)
         {
-            var chatId = message.Chat.Id;
-            var messageText = message.Text;
+            await HandleMessage(message.Chat.Id, message.Text);
+        }
+        
+        private async Task BotOnCallbackQueryReceived(CallbackQuery callbackQuery, CancellationToken cancellationToken)
+        {
+            await telegram.AnswerCallbackQueryAsync(
+                callbackQuery.Id,
+                $"Received {callbackQuery.Data}",
+                cancellationToken: cancellationToken);
 
+            await telegram.EditMessageTextAsync(
+                callbackQuery.Message!.Chat.Id,
+                callbackQuery.Message.MessageId,
+                callbackQuery.Data!,
+                cancellationToken: cancellationToken);
+            
+            await HandleMessage(callbackQuery.Message!.Chat.Id, callbackQuery.Data);
+        }
+
+        private async Task HandleMessage(long chatId, string messageText)
+        {
             try
             {
                 var command = CommandHelper.Parse(messageText);
@@ -94,8 +118,7 @@ namespace Dota2Bot.Core.Bot
             catch (Exception ex)
             {
                 logger.LogError(ex, "Cmd: {Message}", messageText);
-                await telegram.SendTextMessageAsync(chatId, "An error has occurred, please try again", 
-                    cancellationToken: cancellationToken);
+                await telegram.SendTextMessageAsync(chatId, "An error has occurred, please try again");
             }
         }
 
