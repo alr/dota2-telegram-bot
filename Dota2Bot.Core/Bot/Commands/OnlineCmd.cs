@@ -24,6 +24,11 @@ namespace Dota2Bot.Core.Bot.Commands
             var steamIds = players.Select(x => x.SteamId).ToList();
             
             var summaries = await SteamClient.GetPlayerSummaries(steamIds);
+            if (summaries == null)
+            {
+                await Telegram.SendTextMessageAsync(chatId, "No results");
+                return;
+            }
 
             var playersOnlineByGames = summaries
                 .Where(x => x.gameid != null)

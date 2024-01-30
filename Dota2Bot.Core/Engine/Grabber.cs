@@ -135,6 +135,11 @@ namespace Dota2Bot.Core.Engine
             var steamIds = players.Select(x => x.SteamId).ToList();
 
             var summary = await steam.GetPlayerSummaries(steamIds);
+            if (summary == null)
+            {
+                logger.LogError("OnlineThreadFunc: no summary");
+                return;
+            }
 
             var currOnlineByGames = summary
                 .Where(x => x.gameid != null)

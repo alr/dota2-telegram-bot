@@ -47,7 +47,7 @@ public class SteamClient
             if (response?.response != null)
                 return response.response.players;
 
-            return new List<PlayerSummariesResponse.Player>();
+            return null;
         }
 
         public async Task<MatchHistoryResponse.Result> GetMatchHistory(long accountId, int count = 100)
