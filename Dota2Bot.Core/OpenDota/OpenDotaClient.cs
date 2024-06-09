@@ -76,6 +76,15 @@ namespace Dota2Bot.Core.OpenDota
             return (await Execute<List<Match>>(request)) ?? new List<Match>();
         }
 
+        public async Task<MatchDetailsResponse.Result> GetMatchDetails(long matchId)
+        {
+            RestRequest request = new RestRequest("/matches/{match_id}");
+            request.AddParameter("match_id", matchId, ParameterType.UrlSegment);
+
+            var response = await Execute<MatchDetailsResponse.Result>(request);
+            return response;
+        }
+
         public async Task<List<Rating>> Ratings(long id)
         {
             RestRequest request = new RestRequest("players/{id}/ratings");
@@ -105,7 +114,10 @@ namespace Dota2Bot.Core.OpenDota
                 // задержка между запросами
                 lastRequestTime = DateTime.UtcNow;
 
-                return response.Data;
+                if (response != null && response.Data != null)
+                    return response.Data;
+
+                return null;
             }
         }
     }

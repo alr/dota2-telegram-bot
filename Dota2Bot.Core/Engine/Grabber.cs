@@ -222,7 +222,7 @@ namespace Dota2Bot.Core.Engine
             List<Match> matches = new List<Match>();
             foreach (var matchId in matchIds)
             {
-                var match = await steam.GetMatchDetails(matchId);
+                var match = await openDota.GetMatchDetails(matchId);
                 var gamePlayers = match.players.Where(x => playerIds.Contains(x.account_id)).ToList();
 
                 foreach (var player in gamePlayers)
