@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 
 namespace Dota2Bot.WorkerService
@@ -25,6 +26,10 @@ namespace Dota2Bot.WorkerService
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0022:Use block body for methods", Justification = "<Pending>")]
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .ConfigureLogging((c, l) =>
+                {
+                    l.AddSentry();
+                })
                 .ConfigureServices((hostContext, services) =>
                 { 
                     services.AddDbContext<Dota2DbContext>(
