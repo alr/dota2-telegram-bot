@@ -94,7 +94,7 @@ public abstract class BaseTimeReportCmd : BaseCmd
             msg += str;
         }
 
-        await Telegram.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
+        await Telegram.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
     }
     protected override async Task ExecuteHandler(long chatId, string args)
     {
