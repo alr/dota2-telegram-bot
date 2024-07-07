@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,8 +41,25 @@ public class SteamClient
 
         public async Task<List<PlayerSummariesResponse.Player>> GetPlayerSummaries(List<string> steamIds)
         {
+            const int MaxPlayers = 100;
+
+            var chunks = steamIds.Chunk(MaxPlayers).ToList();
+            var result = new List<PlayerSummariesResponse.Player>();
+
+            foreach (var chunk in chunks)
+            {
+                var chunkResult = await GetPlayerSummariesHandler(chunk);
+                if (chunkResult != null)
+                    result.AddRange(chunkResult);
+            }
+
+            return result;
+        }
+
+        private async Task<List<PlayerSummariesResponse.Player>> GetPlayerSummariesHandler(IEnumerable<string> steamIds)
+        {
             RestRequest request = new RestRequest("ISteamUser/GetPlayerSummaries/v0002/");
-            request.AddQueryParameter("steamids", String.Join(",", steamIds));
+            request.AddQueryParameter("steamids", string.Join(",", steamIds));
 
             var response = await ExecuteAsync<PlayerSummariesResponse>(request);
             if (response?.response != null)
